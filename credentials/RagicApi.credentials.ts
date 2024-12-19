@@ -16,13 +16,21 @@ export class RagicApi implements ICredentialType {
 			name: 'apiKey',
 			type: 'string',
 			default: '',
+			required: true,
 		},
+		{
+			displayName: 'Server Name',
+			name: 'serverName',
+			type: 'string',
+			default: '',
+			required: true,
+		}
 	];
 	authenticate = {
 		type: 'generic',
 		properties: {
-			header: {
-        Authorization: 'Basic {{$credentials.authToken}}',
+			headers: {
+        'Authorization': '={{"Basic " + $credentials.apiKey}}',
       },
 		},
 	} as IAuthenticateGeneric;
