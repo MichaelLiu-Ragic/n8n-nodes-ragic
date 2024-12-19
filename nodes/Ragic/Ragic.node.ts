@@ -8,7 +8,7 @@ export class Ragic implements INodeType {
     icon: 'file:Ragic.svg',
     group: ['transform'],
     version: 1,
-    subtitle: 'Update / Create data',
+    subtitle: '={{$parameter["action"]}}',
     description: 'Ragic: #1 No Code database builder',
     defaults: {
       name: 'Ragic',
@@ -23,6 +23,23 @@ export class Ragic implements INodeType {
     ],
 		properties: [
 		// Resources and operations will go here
+    {
+      displayName: 'Action',
+      name: 'action',
+      type: 'options',
+      noDataExpression: true,
+      options: [
+        {
+          name: 'Create New Data',
+          value: 'createNewData',
+        },
+        {
+          name: 'Update Existed Data',
+          value: 'updateExistedData',
+        },
+      ],
+      default: 'createNewData',
+    },
 		]
 	};
 
@@ -37,15 +54,32 @@ export class Ragic implements INodeType {
 
 		// 構建 baseURL
 		const baseURL = `https://${serverName}/Takoumori/n8n-test/2?api`;
+    const action = this.getNodeParameter('action', 0) as string;
 
 		// 執行 API 請求
-		const response = await this.helpers.request({
-			method: 'GET',
-			url: `${baseURL}`, // 使用動態構建的 baseURL
-			headers: {
-				Authorization: `Basic ${apiKey}`,
-			},
-		});
+    let response;
+    if(action === 'createNewData'){
+      response = await this.helpers.request({
+        method: 'POST',
+        url: `${baseURL}`, // 使用動態構建的 baseURL
+        headers: {
+          Authorization: `Basic ${apiKey}`,
+        },
+        body:{
+          '1000009':'n8n測試',
+          '1000010':'總算有點進展了'
+        }
+      });
+    }else{
+      response = await this.helpers.request({
+        method: 'GET',
+        url: `${baseURL}`, // 使用動態構建的 baseURL
+        headers: {
+          Authorization: `Basic ${apiKey}`,
+        },
+      });
+    }
+
 
 		// 確保返回的是 JSON 格式
 		let parsedResponse;
