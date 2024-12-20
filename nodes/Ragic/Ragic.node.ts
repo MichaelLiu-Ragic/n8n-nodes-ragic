@@ -1,4 +1,4 @@
-import { IExecuteFunctions, INodeExecutionData, INodeType, INodeTypeDescription, NodeExecutionWithMetadata } from 'n8n-workflow';
+import { IExecuteFunctions, ILoadOptionsFunctions, INodeExecutionData, INodeType, INodeTypeDescription, NodeExecutionWithMetadata } from 'n8n-workflow';
 
 export class Ragic implements INodeType {
 	description: INodeTypeDescription = {
@@ -40,8 +40,50 @@ export class Ragic implements INodeType {
       ],
       default: 'createNewData',
     },
+    {
+      displayName: 'Form',
+      name: 'form',
+      type: 'options',
+      typeOptions: {
+        loadOptionsMethod: 'getFormOptions',
+      },
+      default: '',
+      description: 'Choose the form based on the action.',
+    },
 		]
 	};
+
+  methods = {
+    loadOptions: {
+      async getFormOptions(this: ILoadOptionsFunctions) {
+        // 獲取當前選擇的 `action` 值
+        const action = this.getNodeParameter('action') as string;
+  
+        // 如果選擇的是 `createNewData`，發送 API 請求
+        if (action === 'createNewData') {
+          const credentials = await this.getCredentials('RagicApi');
+          const serverName = credentials?.serverName as string;
+          const apiKey = credentials?.apiKey as string;
+          const response = await this.helpers.request({
+            method: 'GET',
+            url: `https://${serverName}/Takoumori/n8n-test/2?api`, // 替換為實際的 API URL
+            headers: {
+              Authorization: `Basic ${apiKey}`,
+            },
+          });
+  
+          // 假設回傳的 JSON 結構為 [{ id: '1', name: 'Form 1' }, { id: '2', name: 'Form 2' }]
+          return response.map((form: { id: string; name: string }) => ({
+            name: form.name,
+            value: form.id,
+          }));
+        }
+  
+        // 如果選擇的是其他動作，返回空選項
+        return [];
+      },
+    },
+  };
 
 
   async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][] | NodeExecutionWithMetadata[][] | null> {
