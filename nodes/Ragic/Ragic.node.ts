@@ -64,18 +64,20 @@ export class Ragic implements INodeType {
           const credentials = await this.getCredentials('RagicApi');
           const serverName = credentials?.serverName as string;
           const apiKey = credentials?.apiKey as string;
-          const response = await this.helpers.request({
+          const responseString = await this.helpers.request({
             method: 'GET',
-            url: `https://${serverName}/Takoumori/n8n-test/2?api`, // 替換為實際的 API URL
+            url: `https://${serverName}?api&n8n`, // 替換為實際的 API URL
             headers: {
               Authorization: `Basic ${apiKey}`,
             },
           });
+
+          const responseArray = JSON.parse(responseString);
   
           // 假設回傳的 JSON 結構為 [{ id: '1', name: 'Form 1' }, { id: '2', name: 'Form 2' }]
-          return response.map((form: { id: string; name: string }) => ({
-            name: form.name,
-            value: form.id,
+          return responseArray.map((form: { displayName: string; path: string }) => ({
+            name: form.displayName,
+            value: form.path,
           }));
         }
   
@@ -83,6 +85,8 @@ export class Ragic implements INodeType {
         return [];
       },
     },
+
+
   };
 
 
@@ -93,9 +97,12 @@ export class Ragic implements INodeType {
 		// 獲取 serverName
 		const serverName = credentials?.serverName as string;
 		const apiKey = credentials?.apiKey as string;
+    const path = "";
+    console.log(path);
+
 
 		// 構建 baseURL
-		const baseURL = `https://${serverName}/Takoumori/n8n-test/2?api`;
+		const baseURL = `https://${serverName}/${path}?api`;
     const action = this.getNodeParameter('action', 0) as string;
 
 		// 執行 API 請求
