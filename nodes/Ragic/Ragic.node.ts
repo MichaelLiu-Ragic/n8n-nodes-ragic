@@ -54,7 +54,8 @@ export class Ragic implements INodeType {
     {
       displayName: 'Record',
       name: 'record',
-      type: 'options',
+      type: 'string',
+      required: true,
       displayOptions: {
         show: {
           action: [
@@ -62,10 +63,6 @@ export class Ragic implements INodeType {
           ],
         },
 	    },
-      typeOptions: {
-        loadOptionsMethod: 'getRecordOptions',
-        loadOptionsDependsOn: ['form'],
-      },
       default: ''
     },
     {
@@ -100,38 +97,7 @@ export class Ragic implements INodeType {
           value: form.path,
         }));
       },
-      async getRecordOptions(this: ILoadOptionsFunctions) {
-        // // 獲取當前選擇的 `action` 值
-        // const action = this.getNodeParameter('action') as string;
-  
-        // // 如果選擇的是 `updateExistedData`，發送 API 請求
-        // if (action === 'updateExistedData') {
-        //   const credentials = await this.getCredentials('RagicApi');
-        //   const serverName = credentials?.serverName as string;
-        //   const apiKey = credentials?.apiKey as string;
-        //   const responseString = await this.helpers.request({
-        //     method: 'GET',
-        //     url: `https://${serverName}?api&n8n`,
-        //     headers: {
-        //       Authorization: `Basic ${apiKey}`,
-        //     },
-        //   });
-
-        //   const responseArray = JSON.parse(responseString);
-  
-        //   // 假設回傳的 JSON 結構為 [{ id: '1', name: 'Form 1' }, { id: '2', name: 'Form 2' }]
-        //   return responseArray.map((form: { displayName: string; path: string }) => ({
-        //     name: form.displayName,
-        //     value: form.path,
-        //   }));
-        // }
-  
-        // // 如果選擇的是其他動作，返回空選項
-        return [];
-      },
     },
-
-
   };
 
 
@@ -143,32 +109,26 @@ export class Ragic implements INodeType {
 		const serverName = credentials?.serverName as string;
 		const apiKey = credentials?.apiKey as string;
     const path = this.getNodeParameter('form',0);
-
+    let record;
+    try{
+      record = '/'+this.getNodeParameter('record',0);
+    }catch(error){
+      record = '';
+    };
+    
 
 		// 構建 baseURL
-		const baseURL = `https://${serverName}/${path}?api`;
-    const action = this.getNodeParameter('action', 0) as string;
+		const baseURL = `https://${serverName}/${path}${record}?api`;
 
 		// 執行 API 請求
-    let response;
-    if(action === 'createNewData'){
-      response = await this.helpers.request({
-        method: 'POST',
-        url: `${baseURL}`, // 使用動態構建的 baseURL
-        headers: {
-          Authorization: `Basic ${apiKey}`,
-        },
-        body:this.getNodeParameter('jsonBody',0)
-      });
-    }else{
-      response = await this.helpers.request({
-        method: 'GET',
-        url: `${baseURL}`, // 使用動態構建的 baseURL
-        headers: {
-          Authorization: `Basic ${apiKey}`,
-        },
-      });
-    }
+    let response = await this.helpers.request({
+      method: 'POST',
+      url: `${baseURL}`, // 使用動態構建的 baseURL
+      headers: {
+        Authorization: `Basic ${apiKey}`,
+      },
+      body:this.getNodeParameter('jsonBody',0)
+    });
 
 
 		// 確保返回的是 JSON 格式
