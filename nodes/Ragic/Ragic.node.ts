@@ -38,7 +38,7 @@ export class Ragic implements INodeType {
           value: 'updateExistedData',
         },
       ],
-      default: 'createNewData',
+      default: '',
     },
     {
       displayName: 'Form',
@@ -48,7 +48,7 @@ export class Ragic implements INodeType {
         loadOptionsMethod: 'getFormOptions',
       },
       default: '',
-      description: 'Choose the form based on the action.',
+      description: 'Only the forms that you are the admin user would show in this list.',
     },
 		]
 	};
@@ -66,7 +66,7 @@ export class Ragic implements INodeType {
           const apiKey = credentials?.apiKey as string;
           const responseString = await this.helpers.request({
             method: 'GET',
-            url: `https://${serverName}?api&n8n`, // 替換為實際的 API URL
+            url: `https://${serverName}?api&n8n`,
             headers: {
               Authorization: `Basic ${apiKey}`,
             },
@@ -97,8 +97,7 @@ export class Ragic implements INodeType {
 		// 獲取 serverName
 		const serverName = credentials?.serverName as string;
 		const apiKey = credentials?.apiKey as string;
-    const path = "";
-    console.log(path);
+    const path = this.getNodeParameter('form',0);
 
 
 		// 構建 baseURL
