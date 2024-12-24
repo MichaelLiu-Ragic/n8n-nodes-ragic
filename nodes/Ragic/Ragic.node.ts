@@ -67,6 +67,13 @@ export class Ragic implements INodeType {
         loadOptionsDependsOn: ['form'],
       },
       default: ''
+    },
+    {
+      displayName: 'JSON Body',
+      name: 'jsonBody',
+      type: 'json',
+      default: '',
+      description: 'Please refer to https://www.ragic.com/intl/en/doc-api',
     }
     ]
 	};
@@ -121,7 +128,7 @@ export class Ragic implements INodeType {
   
         // // 如果選擇的是其他動作，返回空選項
         return [];
-      }
+      },
     },
 
 
@@ -151,10 +158,7 @@ export class Ragic implements INodeType {
         headers: {
           Authorization: `Basic ${apiKey}`,
         },
-        body:{
-          '1000009':'n8n測試',
-          '1000010':'總算有點進展了'
-        }
+        body:this.getNodeParameter('jsonBody',0)
       });
     }else{
       response = await this.helpers.request({
