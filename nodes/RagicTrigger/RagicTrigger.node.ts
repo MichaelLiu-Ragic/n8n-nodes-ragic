@@ -2,6 +2,9 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	IHookFunctions,
+  IExecuteFunctions,
+  INodeExecutionData,
+  NodeExecutionWithMetadata,
 } from 'n8n-workflow';
 
 export class RagicTrigger implements INodeType {
@@ -132,4 +135,36 @@ export class RagicTrigger implements INodeType {
       },
 		},
 	};
+
+  async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][] | NodeExecutionWithMetadata[][] | null> {
+
+    const exec_apiKey = this.getNodeParameter('apiKey',0) as string;
+    const exec_sheetUrl = this.getNodeParameter('sheetUrl',0) as string;
+    const exec_sheetUrlSection = exec_sheetUrl.split('/');
+    const exec_server = exec_sheetUrlSection[2];
+    const exec_apName = exec_sheetUrlSection[3];
+    const exec_path = exec_sheetUrlSection[4];
+    const exec_sheetIndex = exec_sheetUrlSection[5];
+    let url = `https://${exec_server}/api/http/testApiAuth.jsp?n8n`
+    url += `&ap=${exec_apName}`;
+    url += `&path=${exec_path}`;
+    url += `&si=${exec_sheetIndex}`;
+    const exec_response = await this.helpers.request({
+      method: 'GET',
+      url: url,
+      headers: {
+        Authorization: `Basic ${exec_apiKey}`,
+      },
+    });
+    
+    let parsedResponse;
+    try {
+			parsedResponse = typeof exec_response === 'string' ? JSON.parse(exec_response) : exec_response;
+		} catch (error) {
+			throw new Error('Failed to parse API response as JSON.');
+		}
+   
+		// 返回結構化 JSON 數據
+		return [this.helpers.returnJsonArray(parsedResponse)];
+  }
 }
