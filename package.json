@@ -30,10 +30,12 @@
   "n8n": {
     "n8nNodesApiVersion": 1,
     "credentials": [
-      "dist/credentials/RagicApi.credentials.js"
+      "dist/credentials/RagicApi.credentials.js",
+      "dist/credentials/RagicApiTrigger.credentials.js"
     ],
     "nodes": [
-      "dist/nodes/Ragic/Ragic.node.js"
+      "dist/nodes/Ragic/Ragic.node.js",
+      "dist/nodes/RagicTrigger/RagicTrigger.node.js"
     ]
   },
   "devDependencies": {
