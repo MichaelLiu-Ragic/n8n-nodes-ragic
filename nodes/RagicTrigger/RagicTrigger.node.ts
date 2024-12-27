@@ -2,9 +2,6 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	IHookFunctions,
-  IExecuteFunctions,
-  INodeExecutionData,
-  NodeExecutionWithMetadata,
   IWebhookFunctions,
   IWebhookResponseData,
 } from 'n8n-workflow';
@@ -25,7 +22,7 @@ export class RagicTrigger implements INodeType {
     webhooks:[
       {
         name: 'default',            // Webhook 的名稱
-        httpMethod: 'GET',         // 支援的 HTTP 方法
+        httpMethod: 'POST',         // 支援的 HTTP 方法
         responseMode: 'onReceived', // 回應模式（即時處理請求）
         path: 'default',            // Webhook 的路徑（URL 的一部分）
     },
@@ -51,11 +48,9 @@ export class RagicTrigger implements INodeType {
 	};
 
   async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
-    console.log("webhook");
     
     // 獲取請求數據
     const bodyData = this.getBodyData();
-    console.log(bodyData);
     
     return {
       workflowData: [
@@ -76,7 +71,7 @@ export class RagicTrigger implements INodeType {
         const sheetUrlSection = sheetUrl.split('/');
         const server = sheetUrlSection[2];
         const apName = sheetUrlSection[3];
-        const path = sheetUrlSection[4];
+        const path = "/"+sheetUrlSection[4];
         const sheetIndex = sheetUrlSection[5];
         let url = `https://${server}/sims/webhooks.jsp?n8n`
         url += `&ap=${apName}`;
@@ -90,12 +85,6 @@ export class RagicTrigger implements INodeType {
               Authorization: `Basic ${apiKey}`,
             },
         });
-        console.log(typeof webhookUrl);
-        console.log(webhookUrl);
-        console.log(responseString);
-        
-        
-        console.log(responseString.includes(webhookUrl));
         
         return responseString.includes(webhookUrl);
       },
@@ -109,7 +98,7 @@ export class RagicTrigger implements INodeType {
         const sheetUrlSection = sheetUrl.split('/');
         const server = sheetUrlSection[2];
         const apName = sheetUrlSection[3];
-        const path = sheetUrlSection[4];
+        const path = "/"+sheetUrlSection[4];
         const sheetIndex = sheetUrlSection[5];
         let url = `https://${server}/sims/webhookSubscribe.jsp?n8n`
         url += `&ap=${apName}`;
@@ -125,7 +114,6 @@ export class RagicTrigger implements INodeType {
             },
             json: true, // 7. 指定請求和回應使用 JSON 格式
         });
-        console.log("create active");
         
         return true; // 8. 返回 true 表示註冊成功
       },
@@ -139,7 +127,7 @@ export class RagicTrigger implements INodeType {
         const sheetUrlSection = sheetUrl.split('/');
         const server = sheetUrlSection[2];
         const apName = sheetUrlSection[3];
-        const path = sheetUrlSection[4];
+        const path = "/"+sheetUrlSection[4];
         const sheetIndex = sheetUrlSection[5];
         let url = `https://${server}/sims/webhookUnsubscribe.jsp?n8n`
         url += `&ap=${apName}`;
@@ -155,40 +143,8 @@ export class RagicTrigger implements INodeType {
             },
             json: true, // 7. 指定請求和回應使用 JSON 格式
         });
-        console.log("delete active");
         return true; // 8. 返回 true 表示註冊成功
       },
 		},
 	};
-
-  // async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][] | NodeExecutionWithMetadata[][] | null> {
-  //   const exec_apiKey = this.getNodeParameter('apiKey',0) as string;
-  //   const exec_sheetUrl = this.getNodeParameter('sheetUrl',0) as string;
-  //   const exec_sheetUrlSection = exec_sheetUrl.split('/');
-  //   const exec_server = exec_sheetUrlSection[2];
-  //   const exec_apName = exec_sheetUrlSection[3];
-  //   const exec_path = exec_sheetUrlSection[4];
-  //   const exec_sheetIndex = exec_sheetUrlSection[5];
-  //   let url = `https://${exec_server}/api/http/testApiAuth.jsp?n8n`
-  //   url += `&ap=${exec_apName}`;
-  //   url += `&path=${exec_path}`;
-  //   url += `&si=${exec_sheetIndex}`;
-  //   const exec_response = await this.helpers.request({
-  //     method: 'GET',
-  //     url: url,
-  //     headers: {
-  //       Authorization: `Basic ${exec_apiKey}`,
-  //     },
-  //   });
-    
-  //   let parsedResponse;
-  //   try {
-	// 		parsedResponse = typeof exec_response === 'string' ? JSON.parse(exec_response) : exec_response;
-	// 	} catch (error) {
-	// 		throw new Error('Failed to parse API response as JSON.');
-	// 	}
-   
-	// 	// 返回結構化 JSON 數據
-	// 	return [this.helpers.returnJsonArray(parsedResponse)];
-  // }
 }

@@ -83,7 +83,7 @@ export class Ragic implements INodeType {
         const apiKey = credentials?.apiKey as string;
         const responseString = await this.helpers.request({
           method: 'GET',
-          url: `https://${serverName}?api&n8n`,
+          url: `https://${serverName}/api/http/integromatForms.jsp?n8n`,
           headers: {
             Authorization: `Basic ${apiKey}`,
           },
