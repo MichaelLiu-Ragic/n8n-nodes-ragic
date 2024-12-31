@@ -91,7 +91,6 @@ export class Ragic implements INodeType {
 
         const responseArray = JSON.parse(responseString);
 
-        // 假設回傳的 JSON 結構為 [{ id: '1', name: 'Form 1' }, { id: '2', name: 'Form 2' }]
         return responseArray.map((form: { displayName: string; path: string }) => ({
           name: form.displayName,
           value: form.path,
@@ -123,7 +122,7 @@ export class Ragic implements INodeType {
 		// 執行 API 請求
     let response = await this.helpers.request({
       method: 'POST',
-      url: `${baseURL}`, // 使用動態構建的 baseURL
+      url: `${baseURL}`,
       headers: {
         Authorization: `Basic ${apiKey}`,
       },

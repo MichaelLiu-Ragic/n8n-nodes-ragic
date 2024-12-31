@@ -118,16 +118,16 @@ export class RagicTrigger implements INodeType {
         url += `&si=${sheetIndex}`;
         url += `&url=${webhookUrl}`;
         url += `&event=${event}`;
-        await this.helpers.request({ // 2. 發送請求到第三方 API
-            method: 'GET', // 3. 請求方法
-            url: url, // 4. 請求的 API URL
-            headers: { // 5. HTTP 請求的header資訊
-                Authorization: `Basic ${apiKey}`, // 5.1 從憑證中獲取 API Token
+        await this.helpers.request({
+            method: 'GET',
+            url: url,
+            headers: {
+                Authorization: `Basic ${apiKey}`,
             },
-            json: true, // 7. 指定請求和回應使用 JSON 格式
+            json: true,
         });
         
-        return true; // 8. 返回 true 表示註冊成功
+        return true;
       },
 			async delete(this: IHookFunctions): Promise<boolean> {
         const credentials = await this.getCredentials('RagicApiTrigger');
@@ -146,15 +146,15 @@ export class RagicTrigger implements INodeType {
         url += `&si=${sheetIndex}`;
         url += `&url=${webhookUrl}`;
         url += `&event=${event}`;
-        await this.helpers.request({ // 2. 發送請求到第三方 API
-            method: 'GET', // 3. 請求方法
-            url: url, // 4. 請求的 API URL
-            headers: { // 5. HTTP 請求的header資訊
-                Authorization: `Basic ${apiKey}`, // 5.1 從憑證中獲取 API Token
+        await this.helpers.request({
+            method: 'GET',
+            url: url,
+            headers: {
+                Authorization: `Basic ${apiKey}`,
             },
-            json: true, // 7. 指定請求和回應使用 JSON 格式
+            json: true,
         });
-        return true; // 8. 返回 true 表示註冊成功
+        return true;
       },
 		},
 	};
