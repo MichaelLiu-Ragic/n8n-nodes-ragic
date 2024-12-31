@@ -19,6 +19,12 @@ export class RagicTrigger implements INodeType {
 		},
 		inputs: [],
 		outputs: ['main'],
+    credentials: [
+      {
+        name: 'RagicApiTrigger',
+        required: true,
+      },
+    ],
     webhooks:[
       {
         name: 'default',            // Webhook 的名稱
@@ -28,22 +34,22 @@ export class RagicTrigger implements INodeType {
     },
     ],
 		properties: [
-      {
-        displayName: 'API Key',
-        name: 'apiKey',
-        type: 'string',
-        default: '',
-        required: true,
-        description: 'Please refer to https://www.ragic.com/intl/en/doc-user/20/personal-settings#4',
-      },
-      {
-        displayName: 'Sheet Url',
-        name: 'sheetUrl',
-        type: 'string',
-        default: '',
-        required: true,
-        description: 'Please copy the sheet url from "https" til the charactor before "?" and paste it.'
-      }
+      // {
+      //   displayName: 'API Key',
+      //   name: 'apiKey',
+      //   type: 'string',
+      //   default: '',
+      //   required: true,
+      //   description: 'Please refer to https://www.ragic.com/intl/en/doc-user/20/personal-settings#4',
+      // },
+      // {
+      //   displayName: 'Sheet Url',
+      //   name: 'sheetUrl',
+      //   type: 'string',
+      //   default: '',
+      //   required: true,
+      //   description: 'Please copy the sheet url from "https" til the charactor before "?" and paste it.'
+      // }
     ],
 	};
 
@@ -65,9 +71,12 @@ export class RagicTrigger implements INodeType {
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
+        const credentials = await this.getCredentials('RagicApi');
         const webhookUrl = this.getNodeWebhookUrl('default') as string;
-        const apiKey = this.getNodeParameter('apiKey',0) as String;
-        const sheetUrl = this.getNodeParameter('sheetUrl',0) as String;
+        // const apiKey = this.getNodeParameter('apiKey',0) as String;
+        // const sheetUrl = this.getNodeParameter('sheetUrl',0) as String;
+        const apiKey = credentials?.apiKey as string;
+        const sheetUrl = credentials?.sheetUrl as string;
         const sheetUrlSection = sheetUrl.split('/');
         const server = sheetUrlSection[2];
         const apName = sheetUrlSection[3];
@@ -89,12 +98,12 @@ export class RagicTrigger implements INodeType {
         return responseString.includes(webhookUrl);
       },
 			async create(this: IHookFunctions): Promise<boolean> {
-        const webhookUrl = this.getNodeWebhookUrl('default'); // 1. 獲取節點的 Webhook URL
-        // const credentials = await this.getCredentials('RagicApiTrigger');
-        // const apiKey = credentials?.apiKey as string;
-        // const sheetUrl = credentials?.sheetUrl as String;
-        const apiKey = this.getNodeParameter('apiKey',0) as string;
-        const sheetUrl = this.getNodeParameter('sheetUrl',0) as string;
+        const credentials = await this.getCredentials('RagicApi');
+        const webhookUrl = this.getNodeWebhookUrl('default') as string;
+        // const apiKey = this.getNodeParameter('apiKey',0) as String;
+        // const sheetUrl = this.getNodeParameter('sheetUrl',0) as String;
+        const apiKey = credentials?.apiKey as string;
+        const sheetUrl = credentials?.sheetUrl as string;
         const sheetUrlSection = sheetUrl.split('/');
         const server = sheetUrlSection[2];
         const apName = sheetUrlSection[3];
@@ -118,12 +127,12 @@ export class RagicTrigger implements INodeType {
         return true; // 8. 返回 true 表示註冊成功
       },
 			async delete(this: IHookFunctions): Promise<boolean> {
-        const webhookUrl = this.getNodeWebhookUrl('default'); // 1. 獲取節點的 Webhook URL
-        // const credentials = await this.getCredentials('RagicApiTrigger');
-        // const apiKey = credentials?.apiKey as string;
-        // const sheetUrl = credentials?.sheetUrl as String;
-        const apiKey = this.getNodeParameter('apiKey',0) as string;
-        const sheetUrl = this.getNodeParameter('sheetUrl',0) as string;
+        const credentials = await this.getCredentials('RagicApi');
+        const webhookUrl = this.getNodeWebhookUrl('default') as string;
+        // const apiKey = this.getNodeParameter('apiKey',0) as String;
+        // const sheetUrl = this.getNodeParameter('sheetUrl',0) as String;
+        const apiKey = credentials?.apiKey as string;
+        const sheetUrl = credentials?.sheetUrl as string;
         const sheetUrlSection = sheetUrl.split('/');
         const server = sheetUrlSection[2];
         const apName = sheetUrlSection[3];
