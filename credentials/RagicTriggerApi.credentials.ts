@@ -4,14 +4,15 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export class RagicApiTrigger implements ICredentialType {
-	name = 'RagicApiTrigger';
-	displayName = 'Ragic API Trigger';
+export class RagicTriggerApi implements ICredentialType {
+	name = 'ragicTriggerApi';
+	displayName = 'Ragic Trigger API';
 	properties: INodeProperties[] = [
 		{
 			displayName: 'API Key',
 			name: 'apiKey',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 			required: true,
 			description: 'Please refer to https://www.ragic.com/intl/en/doc-user/20/personal-settings#4',
@@ -25,12 +26,12 @@ export class RagicApiTrigger implements ICredentialType {
 			description: 'Please copy the sheet url from "https" til the charactor before "?" and paste it.'
 		}
 	];
-	authenticate = {
+	authenticate: IAuthenticateGeneric = {
 		type: 'generic',
 		properties: {
 			headers: {
         'Authorization': '={{"Basic " + $credentials.apiKey}}',
       },
 		},
-	} as IAuthenticateGeneric;
+	};
 }

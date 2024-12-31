@@ -1,7 +1,7 @@
 {
   "name": "n8n-node-ragic",
   "version": "1.0.0",
-  "description": "",
+  "description": "Ragic n8n node",
   "keywords": [
     "n8n-community-node-package"
   ],
@@ -31,7 +31,7 @@
     "n8nNodesApiVersion": 1,
     "credentials": [
       "dist/credentials/RagicApi.credentials.js",
-      "dist/credentials/RagicApiTrigger.credentials.js"
+      "dist/credentials/RagicTriggerApi.credentials.js"
     ],
     "nodes": [
       "dist/nodes/Ragic/Ragic.node.js",

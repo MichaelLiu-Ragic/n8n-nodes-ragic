@@ -1,10 +1,10 @@
-import { IExecuteFunctions, ILoadOptionsFunctions, INodeExecutionData, INodeType, INodeTypeDescription, NodeExecutionWithMetadata } from 'n8n-workflow';
+import { ApplicationError, IExecuteFunctions, ILoadOptionsFunctions, INodeExecutionData, INodeType, INodeTypeDescription, NodeExecutionWithMetadata } from 'n8n-workflow';
 
 export class Ragic implements INodeType {
 	description: INodeTypeDescription = {
 		// Basic node details will go here
     displayName: 'Ragic',
-    name: 'Ragic',
+    name: 'ragic',
     icon: 'file:Ragic.svg',
     group: ['transform'],
     version: 1,
@@ -17,7 +17,7 @@ export class Ragic implements INodeType {
     outputs: ['main'],
     credentials: [
       {
-        name: 'RagicApi',
+        name: 'ragicApi',
         required: true,
       },
     ],
@@ -38,10 +38,10 @@ export class Ragic implements INodeType {
           value: 'updateExistedData',
         },
       ],
-      default: '',
+      default: 'createNewData',
     },
     {
-      displayName: 'Form',
+      displayName: 'Form Name or ID',
       name: 'form',
       type: 'options',
       typeOptions: {
@@ -49,7 +49,7 @@ export class Ragic implements INodeType {
         loadOptionsDependsOn: ['credentials'],
       },
       default: '',
-      description: 'Only the forms that you are the admin user would show in this list.',
+      description: 'Only the forms that you are the admin user would show in this list. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
     },
     {
       displayName: 'Record',
@@ -78,7 +78,7 @@ export class Ragic implements INodeType {
   methods = {
     loadOptions: {
       async getFormOptions(this: ILoadOptionsFunctions) {
-        const credentials = await this.getCredentials('RagicApi');
+        const credentials = await this.getCredentials('ragicApi');
         const serverName = credentials?.serverName as string;
         const apiKey = credentials?.apiKey as string;
         const responseString = await this.helpers.request({
@@ -102,7 +102,7 @@ export class Ragic implements INodeType {
 
   async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][] | NodeExecutionWithMetadata[][] | null> {
     // 獲取憑據
-		const credentials = await this.getCredentials('RagicApi');
+		const credentials = await this.getCredentials('ragicApi');
 
 		// 獲取 serverName
 		const serverName = credentials?.serverName as string;
@@ -135,7 +135,7 @@ export class Ragic implements INodeType {
 		try {
 			parsedResponse = typeof response === 'string' ? JSON.parse(response) : response;
 		} catch (error) {
-			throw new Error('Failed to parse API response as JSON.');
+			throw new ApplicationError('Failed to parse API response as JSON.');
 		}
 
 		// 返回結構化 JSON 數據

@@ -9,7 +9,7 @@ import {
 export class RagicTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Ragic Trigger',
-		name: 'RagicTrigger',
+		name: 'ragicTrigger',
 		icon: 'file:Ragic.svg',
 		group: ['trigger'],
 		version: 1,
@@ -21,7 +21,7 @@ export class RagicTrigger implements INodeType {
 		outputs: ['main'],
     credentials: [
       {
-        name: 'RagicApiTrigger',
+        name: 'ragicTriggerApi',
         required: true,
       },
     ],
@@ -52,7 +52,7 @@ export class RagicTrigger implements INodeType {
           },
         ],
         default: 'create',
-        description: 'The Event of this trigger node listen to.',
+        description: 'The Event of this trigger node listen to',
         required: true,}
     ],
 	};
@@ -75,7 +75,7 @@ export class RagicTrigger implements INodeType {
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
-        const credentials = await this.getCredentials('RagicApiTrigger');
+        const credentials = await this.getCredentials('ragicTriggerApi');
         const webhookUrl = this.getNodeWebhookUrl('default') as string;
         const apiKey = credentials?.apiKey as string;
         const sheetUrl = credentials?.sheetUrl as string;
@@ -102,7 +102,7 @@ export class RagicTrigger implements INodeType {
         return responseString.includes(webhookUrl);
       },
 			async create(this: IHookFunctions): Promise<boolean> {
-        const credentials = await this.getCredentials('RagicApiTrigger');
+        const credentials = await this.getCredentials('ragicTriggerApi');
         const webhookUrl = this.getNodeWebhookUrl('default') as string;
         const apiKey = credentials?.apiKey as string;
         const sheetUrl = credentials?.sheetUrl as string;
@@ -130,7 +130,7 @@ export class RagicTrigger implements INodeType {
         return true;
       },
 			async delete(this: IHookFunctions): Promise<boolean> {
-        const credentials = await this.getCredentials('RagicApiTrigger');
+        const credentials = await this.getCredentials('ragicTriggerApi');
         const webhookUrl = this.getNodeWebhookUrl('default') as string;
         const apiKey = credentials?.apiKey as string;
         const sheetUrl = credentials?.sheetUrl as string;
