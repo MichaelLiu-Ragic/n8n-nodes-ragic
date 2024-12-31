@@ -1,6 +1,6 @@
 {
   "name": "n8n-node-ragic",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "",
   "keywords": [
     "n8n-community-node-package"
@@ -8,12 +8,12 @@
   "license": "MIT",
   "homepage": "",
   "author": {
-    "name": "",
-    "email": ""
+    "name": "Michael",
+    "email": "michaelliu@ragic.com"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/tw010238/n8n-nodes-Ragic.git"
+    "url": "https://github.com/tw010238/n8n-node-ragic"
   },
   "main": "index.js",
   "scripts": {
