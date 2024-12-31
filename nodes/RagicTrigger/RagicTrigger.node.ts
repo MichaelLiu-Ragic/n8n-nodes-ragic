@@ -34,22 +34,26 @@ export class RagicTrigger implements INodeType {
     },
     ],
 		properties: [
-      // {
-      //   displayName: 'API Key',
-      //   name: 'apiKey',
-      //   type: 'string',
-      //   default: '',
-      //   required: true,
-      //   description: 'Please refer to https://www.ragic.com/intl/en/doc-user/20/personal-settings#4',
-      // },
-      // {
-      //   displayName: 'Sheet Url',
-      //   name: 'sheetUrl',
-      //   type: 'string',
-      //   default: '',
-      //   required: true,
-      //   description: 'Please copy the sheet url from "https" til the charactor before "?" and paste it.'
-      // }
+      {displayName: 'Event',
+        name: 'event',
+        type: 'options',
+        options: [
+          {
+            name: 'Create Records',
+            value: 'create',
+          },
+          {
+            name: 'Update Records',
+            value: 'update',
+          },
+          {
+            name: 'Create & Update Records',
+            value: 'CreateUpdate',
+          },
+        ],
+        default: 'create',
+        description: 'The Event of this trigger node listen to.',
+        required: true,}
     ],
 	};
 
@@ -71,10 +75,8 @@ export class RagicTrigger implements INodeType {
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
-        const credentials = await this.getCredentials('RagicApi');
+        const credentials = await this.getCredentials('RagicApiTrigger');
         const webhookUrl = this.getNodeWebhookUrl('default') as string;
-        // const apiKey = this.getNodeParameter('apiKey',0) as String;
-        // const sheetUrl = this.getNodeParameter('sheetUrl',0) as String;
         const apiKey = credentials?.apiKey as string;
         const sheetUrl = credentials?.sheetUrl as string;
         const sheetUrlSection = sheetUrl.split('/');
@@ -82,11 +84,13 @@ export class RagicTrigger implements INodeType {
         const apName = sheetUrlSection[3];
         const path = "/"+sheetUrlSection[4];
         const sheetIndex = sheetUrlSection[5];
-        let url = `https://${server}/sims/webhooks.jsp?n8n`
+        const event = this.getNodeParameter("event",0) as string;
+        let url = `https://${server}/sims/webhooks.jsp?n8n`;
         url += `&ap=${apName}`;
         url += `&path=${path}`;
         url += `&si=${sheetIndex}`;
         url += `&url=${webhookUrl}`;
+        url += `&event=${event}`;
         const responseString = await this.helpers.request({
             method: 'GET',
             url: url,
@@ -98,10 +102,8 @@ export class RagicTrigger implements INodeType {
         return responseString.includes(webhookUrl);
       },
 			async create(this: IHookFunctions): Promise<boolean> {
-        const credentials = await this.getCredentials('RagicApi');
+        const credentials = await this.getCredentials('RagicApiTrigger');
         const webhookUrl = this.getNodeWebhookUrl('default') as string;
-        // const apiKey = this.getNodeParameter('apiKey',0) as String;
-        // const sheetUrl = this.getNodeParameter('sheetUrl',0) as String;
         const apiKey = credentials?.apiKey as string;
         const sheetUrl = credentials?.sheetUrl as string;
         const sheetUrlSection = sheetUrl.split('/');
@@ -109,12 +111,13 @@ export class RagicTrigger implements INodeType {
         const apName = sheetUrlSection[3];
         const path = "/"+sheetUrlSection[4];
         const sheetIndex = sheetUrlSection[5];
-        let url = `https://${server}/sims/webhookSubscribe.jsp?n8n`
+        const event = this.getNodeParameter("event",0) as string;
+        let url = `https://${server}/sims/webhookSubscribe.jsp?n8n`;
         url += `&ap=${apName}`;
         url += `&path=${path}`;
         url += `&si=${sheetIndex}`;
         url += `&url=${webhookUrl}`;
-        url += `&event=create`;  // 暫時不確定event是甚麼
+        url += `&event=${event}`;
         await this.helpers.request({ // 2. 發送請求到第三方 API
             method: 'GET', // 3. 請求方法
             url: url, // 4. 請求的 API URL
@@ -127,10 +130,8 @@ export class RagicTrigger implements INodeType {
         return true; // 8. 返回 true 表示註冊成功
       },
 			async delete(this: IHookFunctions): Promise<boolean> {
-        const credentials = await this.getCredentials('RagicApi');
+        const credentials = await this.getCredentials('RagicApiTrigger');
         const webhookUrl = this.getNodeWebhookUrl('default') as string;
-        // const apiKey = this.getNodeParameter('apiKey',0) as String;
-        // const sheetUrl = this.getNodeParameter('sheetUrl',0) as String;
         const apiKey = credentials?.apiKey as string;
         const sheetUrl = credentials?.sheetUrl as string;
         const sheetUrlSection = sheetUrl.split('/');
@@ -138,12 +139,13 @@ export class RagicTrigger implements INodeType {
         const apName = sheetUrlSection[3];
         const path = "/"+sheetUrlSection[4];
         const sheetIndex = sheetUrlSection[5];
-        let url = `https://${server}/sims/webhookUnsubscribe.jsp?n8n`
+        const event = this.getNodeParameter("event",0) as string;
+        let url = `https://${server}/sims/webhookUnsubscribe.jsp?n8n`;
         url += `&ap=${apName}`;
         url += `&path=${path}`;
         url += `&si=${sheetIndex}`;
         url += `&url=${webhookUrl}`;
-        url += `&event=create`;  // 暫時不確定event是甚麼
+        url += `&event=${event}`;
         await this.helpers.request({ // 2. 發送請求到第三方 API
             method: 'GET', // 3. 請求方法
             url: url, // 4. 請求的 API URL
