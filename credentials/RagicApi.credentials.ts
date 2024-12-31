@@ -7,9 +7,7 @@ import {
 export class RagicApi implements ICredentialType {
 	name = 'ragicApi';
 	displayName = 'Ragic API';
-	// Uses the link to this tutorial as an example
-	// Replace with your own docs links when building your own nodes
-	documentationUrl = 'https://docs.n8n.io/integrations/creating-nodes/build/declarative-style-node/';
+	documentationUrl = 'https://www.ragic.com/intl/en/doc-api';  //TODO: 之後要寫這n8n的文件，再把對外文件放到這裡
 	properties: INodeProperties[] = [
 		{
 			displayName: 'API Key',
@@ -18,6 +16,7 @@ export class RagicApi implements ICredentialType {
 			typeOptions: { password: true },
 			default: '',
 			required: true,
+			description: 'Please refer to <a href="https://www.ragic.com/intl/en/doc-user/20/personal-settings#4">here</a>',
 		},
 		{
 			displayName: 'Server Name',
@@ -25,6 +24,7 @@ export class RagicApi implements ICredentialType {
 			type: 'string',
 			default: '',
 			required: true,
+			description: 'You can find the server name in your database url, from the frist charactor after "https://" til the charactor before the next "/". It should be like "www.ragic.com" or "ap5.ragic.com".'
 		}
 	];
 	authenticate: IAuthenticateGeneric = {

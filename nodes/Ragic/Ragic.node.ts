@@ -41,7 +41,8 @@ export class Ragic implements INodeType {
       default: 'createNewData',
     },
     {
-      displayName: 'Form Name or ID',
+      // eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+      displayName: 'Form',
       name: 'form',
       type: 'options',
       typeOptions: {
@@ -70,7 +71,7 @@ export class Ragic implements INodeType {
       name: 'jsonBody',
       type: 'json',
       default: '',
-      description: 'Please refer to https://www.ragic.com/intl/en/doc-api',
+      description: 'Please refer to <a href="https://www.ragic.com/intl/en/doc-api">here</a>',
     }
     ]
 	};

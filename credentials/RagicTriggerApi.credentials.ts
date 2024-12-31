@@ -15,7 +15,7 @@ export class RagicTriggerApi implements ICredentialType {
 			typeOptions: { password: true },
 			default: '',
 			required: true,
-			description: 'Please refer to https://www.ragic.com/intl/en/doc-user/20/personal-settings#4',
+			description: 'Please refer to <a href="https://www.ragic.com/intl/en/doc-user/20/personal-settings#4">here</a>',
 		},
 		{
 			displayName: 'Sheet Url',
