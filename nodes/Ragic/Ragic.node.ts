@@ -53,8 +53,8 @@ export class Ragic implements INodeType {
       description: 'Only the forms that you are the admin user would show in this list. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
     },
     {
-      displayName: 'Record',
-      name: 'record',
+      displayName: 'Record Index',
+      name: 'recordIndex',
       type: 'string',
       required: true,
       displayOptions: {
@@ -64,7 +64,8 @@ export class Ragic implements INodeType {
           ],
         },
 	    },
-      default: ''
+      default: '',
+      description: 'You can find the Record Index from the URL. Record URL structure: http://{domain}/{database}/{path}/{form}/{record index}?.',
     },
     {
       displayName: 'JSON Body',
@@ -109,16 +110,16 @@ export class Ragic implements INodeType {
 		const serverName = credentials?.serverName as string;
 		const apiKey = credentials?.apiKey as string;
     const path = this.getNodeParameter('form',0);
-    let record;
+    let recordIndex;
     try{
-      record = '/'+this.getNodeParameter('record',0);
+      recordIndex = '/'+this.getNodeParameter('recordIndex',0);
     }catch(error){
-      record = '';
+      recordIndex = '';
     };
     
 
 		// 構建 baseURL
-		const baseURL = `https://${serverName}/${path}${record}?api`;
+		const baseURL = `https://${serverName}/${path}${recordIndex}?api`;
 
 		// 執行 API 請求
     let response = await this.helpers.request({
