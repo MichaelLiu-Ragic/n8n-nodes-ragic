@@ -98,8 +98,13 @@ export class RagicTrigger implements INodeType {
               Authorization: `Basic ${apiKey}`,
             },
         });
-        
-        return responseString.includes(webhookUrl);
+        const responseJSONArray = JSON.parse(responseString);
+        for (let index = 0; index < responseJSONArray.length; index++) {
+          const url = responseJSONArray[index]['url'];
+          const subscribedWebhookEvent = responseJSONArray[index]['event']
+          if(url === webhookUrl && subscribedWebhookEvent === event) return true;
+        }
+        return false;
       },
 			async create(this: IHookFunctions): Promise<boolean> {
         const credentials = await this.getCredentials('ragicTriggerApi');
