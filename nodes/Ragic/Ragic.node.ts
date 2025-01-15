@@ -119,7 +119,7 @@ export class Ragic implements INodeType {
     
 
 		// 構建 baseURL
-		const baseURL = `https://${serverName}/${path}${recordIndex}?api`;
+		const baseURL = `https://${serverName}/${path}${recordIndex}?api&n8n`;
 
 		// 執行 API 請求
     let response = await this.helpers.request({
