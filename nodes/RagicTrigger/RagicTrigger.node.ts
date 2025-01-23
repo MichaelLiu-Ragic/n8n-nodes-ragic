@@ -103,9 +103,7 @@ export class RagicTrigger implements INodeType {
 				})) as string;
 				const responseJSONArray = jsonParse(responseString) as [];
 				for (let index = 0; index < responseJSONArray.length; index++) {
-					// eslint-disable-next-line @typescript-eslint/dot-notation
 					const subscribedUrl = responseJSONArray[index]['url'];
-					// eslint-disable-next-line @typescript-eslint/dot-notation
 					const subscribedWebhookEvent = responseJSONArray[index]['event'];
 					if (subscribedUrl === webhookUrl && subscribedWebhookEvent === event) return true;
 				}

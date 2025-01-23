@@ -5,8 +5,6 @@ export class RagicTriggerApi implements ICredentialType {
 
 	displayName = 'Ragic Trigger API';
 
-	documentationUrl = 'ragicTrigger';
-
 	properties: INodeProperties[] = [
 		{
 			displayName: 'API Key',
