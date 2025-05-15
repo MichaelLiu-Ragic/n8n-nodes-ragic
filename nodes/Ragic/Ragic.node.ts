@@ -34,6 +34,23 @@ export class Ragic implements INodeType {
 		properties: [
 			// Resources and operations will go here
 			{
+				displayName: 'Method',
+				name: 'method',
+				type: 'options',
+				noDataExpression: true,
+				options: [
+					{
+						name: 'JSON',
+						value: 'json'
+					},
+					{
+						name: 'Fields',
+						value: 'fields'
+					}
+				],
+				default: 'json'
+			},
+			{
 				displayName: 'Action',
 				name: 'action',
 				type: 'options',
@@ -81,6 +98,11 @@ export class Ragic implements INodeType {
 				displayName: 'JSON Body',
 				name: 'jsonBody',
 				type: 'json',
+				displayOptions: {
+					show: {
+						method: ['json'],
+					},
+				},
 				default: '',
 				description: 'Please refer to <a href="https://www.ragic.com/intl/en/doc-api">here</a>',
 			},
