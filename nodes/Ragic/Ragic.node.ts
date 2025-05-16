@@ -174,8 +174,6 @@ export class Ragic implements INodeType {
 				}));
 			},
 			async getFieldOptions(this: ILoadOptionsFunctions){
-				console.log('getFieldOptions activate');
-				
 				const credentials = await this.getCredentials('ragicApi');
 				const serverName = credentials?.serverName as string;
 				const apiKey = credentials?.apiKey as string;
@@ -203,7 +201,7 @@ export class Ragic implements INodeType {
 					const displayName = name + ' (' + domainId + ')';
 					options.push({name: displayName, value: domainId});
 				}
-				
+
 				return options;
 			}
 		},
@@ -231,20 +229,45 @@ export class Ragic implements INodeType {
 		const baseURL = `https://${serverName}/${path}${recordIndex}?api&n8n`;
 
 		// 執行 API 請求
-		const response = (await this.helpers.request({
-			method: 'POST',
-			url: `${baseURL}`,
-			headers: {
-				Authorization: `Basic ${apiKey}`,
-			},
-			body: this.getNodeParameter('jsonBody', 0),
-		})) as string;
+		const method = this.getNodeParameter('method', 0);
+		let responseJson;
+		if(method === 'jsonMode') {
+			responseJson = (await this.helpers.request({
+				method: 'POST',
+				url: `${baseURL}`,
+				headers: {
+					Authorization: `Basic ${apiKey}`,
+				},
+				body: this.getNodeParameter('jsonBody', 0),
+				json: true,
+			})) as JsonObject;
+		} else if (method === 'fieldMode') {
+			const jsonBody = {} as JsonObject;
+			const entries = this.getNodeParameter('entries', 0) as IDataObject;
+			const fieldMode_map = entries['fieldMode_map'] as Array<{entries_field:string, entries_value:string}>;
+			for (const entry of fieldMode_map) {
+				const field = entry.entries_field;
+				const value = entry.entries_value;
+				jsonBody[field] = value;
+			}
+
+			responseJson = (await this.helpers.request({
+				method: 'POST',
+				url: `${baseURL}`,
+				headers: {
+					Authorization: `Basic ${apiKey}`,
+				},
+				body: jsonBody,
+				json: true,
+			})) as JsonObject;
+		}
+		
 
 		// 確保返回的是 JSON 格式
 		let parsedResponse;
 		try {
 			parsedResponse = (
-				typeof response === 'string' ? JSON.parse(response) : response
+				typeof responseJson === 'string' ? JSON.parse(responseJson) : responseJson
 			) as IDataObject;
 		} catch (error) {
 			throw new ApplicationError('Failed to parse API response as JSON.');
