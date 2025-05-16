@@ -9,7 +9,7 @@ import type {
 	NodeConnectionType,
 	NodeExecutionWithMetadata,
 } from 'n8n-workflow';
-import { ApplicationError, jsonParse } from 'n8n-workflow';
+import { ApplicationError } from 'n8n-workflow';
 
 export class Ragic implements INodeType {
 	description: INodeTypeDescription = {
@@ -158,20 +158,21 @@ export class Ragic implements INodeType {
 				const credentials = await this.getCredentials('ragicApi');
 				const serverName = credentials?.serverName as string;
 				const apiKey = credentials?.apiKey as string;
-				const responseString = (await this.helpers.request({
+				const responseJson = (await this.helpers.request({
 					method: 'GET',
 					url: `https://${serverName}/api/http/integromatForms.jsp?n8n`,
 					headers: {
 						Authorization: `Basic ${apiKey}`,
 					},
-				})) as string;
+					json: true,
+				})) as JsonObject;
 
-				const responseArray = jsonParse(responseString) as [];
-
-				return responseArray.map((form: { displayName: string; path: string }) => ({
-					name: form.displayName,
-					value: form.path,
-				}));
+				const options = [];
+				for (const key of Object.keys(responseJson)) {
+					const optionInfo = responseJson[key] as JsonObject;
+					options.push({name: optionInfo['displayName'] as string, value: optionInfo['path'] as string});
+				}
+				return options;
 			},
 			async getFieldOptions(this: ILoadOptionsFunctions){
 				const credentials = await this.getCredentials('ragicApi');
