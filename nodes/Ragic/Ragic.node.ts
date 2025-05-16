@@ -129,7 +129,7 @@ export class Ragic implements INodeType {
 								type: 'options',
 								typeOptions: {
 									loadOptionsMethod: 'getFieldOptions',
-									loadOptionsDependsOn: ['credentials'],
+									loadOptionsDependsOn: ['credentials', 'form', 'recordIndex'],
 								},
 								default: '',
 								
