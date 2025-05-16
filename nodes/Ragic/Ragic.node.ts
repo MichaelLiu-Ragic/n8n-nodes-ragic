@@ -5,6 +5,7 @@ import type {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 	NodeConnectionType,
 	NodeExecutionWithMetadata,
 } from 'n8n-workflow';
@@ -41,14 +42,14 @@ export class Ragic implements INodeType {
 				options: [
 					{
 						name: 'JSON',
-						value: 'json'
+						value: 'jsonMode'
 					},
 					{
-						name: 'Fields',
-						value: 'fields'
+						name: 'Field',
+						value: 'fieldMode'
 					}
 				],
-				default: 'json'
+				default: 'jsonMode'
 			},
 			{
 				displayName: 'Action',
@@ -100,12 +101,54 @@ export class Ragic implements INodeType {
 				type: 'json',
 				displayOptions: {
 					show: {
-						method: ['json'],
+						method: ['jsonMode'],
 					},
 				},
 				default: '',
 				description: 'Please refer to <a href="https://www.ragic.com/intl/en/doc-api">here</a>',
 			},
+			{
+				displayName: 'Entries',
+				name: 'entries',
+				placeholder: 'Add Entry',
+				type: 'fixedCollection',
+				default: {},
+				typeOptions: {
+					multipleValues: true,
+				},
+				options: [
+					{
+						name: 'fieldMode_map',
+						displayName: 'Entries',
+						values: [
+							{
+								// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+								displayName: 'Field',
+								name: 'entries_field',
+								// eslint-disable-next-line n8n-nodes-base/node-param-description-missing-from-dynamic-options
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'getFieldOptions',
+									loadOptionsDependsOn: ['credentials'],
+								},
+								default: '',
+								
+							},
+							{
+								displayName: 'Value',
+								name: 'entries_value',
+								type: 'string',
+								default: ''
+							}
+						]
+					}
+				],
+				displayOptions: {
+					show: {
+						method: ['fieldMode'],
+					},
+				},
+			}
 		],
 	};
 
@@ -130,7 +173,41 @@ export class Ragic implements INodeType {
 					value: form.path,
 				}));
 			},
+			async getFieldOptions(this: ILoadOptionsFunctions){
+				console.log('getFieldOptions activate');
+				
+				const credentials = await this.getCredentials('ragicApi');
+				const serverName = credentials?.serverName as string;
+				const apiKey = credentials?.apiKey as string;
+				const path = this.getNodeParameter('form', 0);
+				if (path === null || path === ''){
+					return [];
+				}
+				const responseJson = (await this.helpers.request({
+					method: 'GET',
+					url: `https://${serverName}/${path}?api&def&n8n`,
+					headers: {
+						Authorization: `Basic ${apiKey}`,
+					},
+					json: true,
+				})) as JsonObject;
+				
+				const fields = responseJson['fields'] as JsonObject;
+				
+				const options = [];
+				for (const key of Object.keys(fields)) {
+					if (!key.startsWith('fid')) continue;
+					const domainId = key.substring(3);
+					const info = fields[key] as JsonObject;
+					const name = info['name'] as string;
+					const displayName = name + ' (' + domainId + ')';
+					options.push({name: displayName, value: domainId});
+				}
+				
+				return options;
+			}
 		},
+		
 	};
 
 	async execute(
