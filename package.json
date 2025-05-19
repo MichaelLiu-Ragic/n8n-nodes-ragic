@@ -1,19 +1,19 @@
 {
-  "name": "n8n-node-ragic",
-  "version": "0.1.0",
-  "description": "",
+  "name": "n8n-nodes-ragic",
+  "version": "2.0.0",
+  "description": "Ragic n8n node",
   "keywords": [
     "n8n-community-node-package"
   ],
   "license": "MIT",
   "homepage": "",
   "author": {
-    "name": "",
-    "email": ""
+    "name": "Michael",
+    "email": "michaelliu@ragic.com"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/tw010238/n8n-nodes-Ragic.git"
+    "url": "https://github.com/MichaelLiu-Ragic/n8n-nodes-ragic"
   },
   "main": "index.js",
   "scripts": {
@@ -31,7 +31,7 @@
     "n8nNodesApiVersion": 1,
     "credentials": [
       "dist/credentials/RagicApi.credentials.js",
-      "dist/credentials/RagicApiTrigger.credentials.js"
+      "dist/credentials/RagicTriggerApi.credentials.js"
     ],
     "nodes": [
       "dist/nodes/Ragic/Ragic.node.js",

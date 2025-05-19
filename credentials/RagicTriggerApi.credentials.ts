@@ -1,9 +1,9 @@
 import type { IAuthenticateGeneric, ICredentialType, INodeProperties } from 'n8n-workflow';
 
-export class RagicApi implements ICredentialType {
-	name = 'ragicApi';
+export class RagicTriggerApi implements ICredentialType {
+	name = 'ragicTriggerApi';
 
-	displayName = 'Ragic API';
+	displayName = 'Ragic Trigger API';
 
 	documentationUrl = 'https://www.ragic.com/intl/en/doc/156';
 
@@ -19,13 +19,13 @@ export class RagicApi implements ICredentialType {
 				'Please refer to <a href="https://www.ragic.com/intl/en/doc-user/20/personal-settings#4">here</a>',
 		},
 		{
-			displayName: 'Server Name',
-			name: 'serverName',
+			displayName: 'Sheet Url',
+			name: 'sheetUrl',
 			type: 'string',
 			default: '',
 			required: true,
 			description:
-				'You can find the server name in your database url, from the frist charactor after "https://" til the charactor before the next "/". It should be like "www.ragic.com" or "ap5.ragic.com".',
+				'Please copy the sheet url from "https" til the charactor before "?" and paste it.',
 		},
 	];
 
