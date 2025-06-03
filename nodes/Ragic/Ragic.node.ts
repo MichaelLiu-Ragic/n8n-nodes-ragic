@@ -465,7 +465,6 @@ export class Ragic implements INodeType {
 }
 
 async function sendReadDataGETRequest(iExecuteFunctions: IExecuteFunctions, baseURL: string, apiKey: string):Promise<JsonObject> {
-	const url = new URL(baseURL);
 	const action = iExecuteFunctions.getNodeParameter('action', 0);
 	const ifShowSubtables = iExecuteFunctions.getNodeParameter('ifShowSubtables', 0) as boolean;
 	const ifIgnoreMasked = iExecuteFunctions.getNodeParameter('ifIgnoreMasked', 0) as boolean;
@@ -476,8 +475,8 @@ async function sendReadDataGETRequest(iExecuteFunctions: IExecuteFunctions, base
 			for(const filter of filter_map){
 				const target = filter.filters_field;
 				const operand = filter.filters_operand;
-				const value = filter.filters_value;
-				url.searchParams.append('where', target + ',' + operand + ',' + value);
+				const value = encodeURIComponent(filter.filters_value);
+				baseURL += ('&where=' + target + ',' + operand + ',' + value);
 			}
 		}
 	}
@@ -485,31 +484,27 @@ async function sendReadDataGETRequest(iExecuteFunctions: IExecuteFunctions, base
 	const otherParameter_map = otherParameters['parameter_map'] as Array<{parameters_key:string, parameters_value:string}>;
 	if(otherParameter_map){
 		for(const otherParameter of otherParameter_map){
-			const key = otherParameter.parameters_key;
-			const value = otherParameter.parameters_value;
-			url.searchParams.append(key, value);
+			const key = encodeURIComponent(otherParameter.parameters_key);
+			const value = encodeURIComponent(otherParameter.parameters_value);
+			baseURL += ('&' + key + '=' + value);
 		}
 	}
 	if(action === 'readSingleData'){
-		url.searchParams.set('singleEntryMode','')
+		baseURL += '&singleEntryMode';
 	}else{
 		const limit = iExecuteFunctions.getNodeParameter('limit', 0) + '' as string;
-		url.searchParams.set('limit', limit);
+		baseURL += ('&limit=' + limit);
 	}
-	if(ifShowSubtables){
-		url.searchParams.delete('subtables');
-	}else{
-		url.searchParams.set('subtables', '0');
+	if(!ifShowSubtables){
+		baseURL += '&subtables=0'
 	}
 	if(ifIgnoreMasked){
-		url.searchParams.set('ignoreMask', 'true');
-	}else{
-		url.searchParams.delete('ignoreMask');
+		baseURL += '&ignoreMask=true'
 	}
 	
 	const responseJson = (await iExecuteFunctions.helpers.request({
 		method: 'GET',
-		url: url.toString(),
+		url: baseURL,
 		headers: {
 			Authorization: `Basic ${apiKey}`,
 		},
