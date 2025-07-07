@@ -1,4 +1,5 @@
 import type {
+	IBinaryData,
 	IDataObject,
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
@@ -39,6 +40,7 @@ export class Ragic implements INodeType {
 				name: 'action',
 				type: 'options',
 				noDataExpression: true,
+				// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 				options: [
 					{
 						name: 'Read Data',
@@ -56,6 +58,10 @@ export class Ragic implements INodeType {
 						name: 'Update Existed Data',
 						value: 'updateExistedData',
 					},
+					{
+						name: 'Retrieve File',
+						value: 'retrieveFile'
+					}
 				],
 				default: 'readData',
 			},
@@ -93,6 +99,13 @@ export class Ragic implements INodeType {
 				typeOptions: {
 					loadOptionsMethod: 'getFormOptions',
 					loadOptionsDependsOn: ['credentials'],
+				},
+				displayOptions: {
+					hide: {
+						action: [
+							'retrieveFile'
+						],
+					}
 				},
 				default: '',
 				description:
@@ -352,7 +365,63 @@ export class Ragic implements INodeType {
 					},
 				},
 			},
-			
+			{		// File Download With User Authentication
+				displayName: 'File Download With User Authentication',
+				name: 'fileDownloadWithUserAuthentication',
+				type: 'boolean',
+				default: false,
+				description: 'Whether the "File Download With User Authentication" in Company Settings is set to "Yes" (default No)',
+				displayOptions: {
+					show: {
+						action: ['retrieveFile'],
+					}
+				},
+			},
+			{		//account name (for retrieve files)
+				displayName: 'Account Name',
+				name: 'apName',
+				type: 'string',
+				required: true,
+				default: '',
+				description: 'Account name of where the file is at',
+				displayOptions: {
+					show: {
+						fileDownloadWithUserAuthentication: [
+							false
+						]
+					}
+				},
+			},
+			{		// file record url
+				displayName: 'File Record Url',
+				name: 'fileRecordUrl',
+				type: 'string',
+				required: true,
+				default: '',
+				description: 'Please enter the record URL where you upload the file; nevigate to the record and copy the URL, then paste it here',
+				displayOptions: {
+					show: {
+						fileDownloadWithUserAuthentication: [
+							true
+						],
+					}
+				},
+			},
+			{		// file name
+				displayName: 'File Name',
+				name: 'fileName',
+				type: 'string',
+				required: true,
+				default: '',
+				description: 'You can find the file name from the returned JSON from "Read Data" action, the file name format should look like: Ni92W2luv@My_Picture.jpg',
+				displayOptions: {
+					show: {
+						action: [
+							'retrieveFile',
+						]
+					}
+				},
+			},
 		],
 	};
 
@@ -424,44 +493,61 @@ export class Ragic implements INodeType {
 		const serverName = credentials?.serverName as string;
 		const apiKey = credentials?.apiKey as string;
 		const action = this.getNodeParameter('action', 0);
-		const path = this.getNodeParameter('form', 0);
-		let method = null;
-		if(action === 'createNewData' || action === 'updateExistedData'){
-			method = this.getNodeParameter('method', 0) as string;
-		}
-		
-		let recordIndex = '';
-		if(action === 'updateExistedData' || action === 'readSingleData'){
-			recordIndex = '/' + (this.getNodeParameter('recordIndex', 0) as string);
-		}
-
-		// 構建 baseURL
-		let baseURL = `https://${serverName}/${path}${recordIndex}?api&n8n`;
 
 		// 執行 API 請求
-		let responseJson;
+		let responseType = 'JSON' as string;
+		let response;
 		if(action === 'readData' || action === 'readSingleData'){
-			responseJson = await sendReadDataGETRequest(this, baseURL, apiKey);
-		}else if(method === 'jsonMode') {
-			responseJson = await sendJsonModePOSTRequest(this, baseURL, apiKey);
-		} else if (method === 'fieldMode') {
-			responseJson = await sendFieldModePOSTRequest(this, baseURL, apiKey);
+			const baseURL = buildRegularAPIUrl(this, action, serverName);
+			response = await sendReadDataGETRequest(this, baseURL, apiKey);
+		}else if(action === 'createNewData' || action === 'updateExistedData'){
+			const method = this.getNodeParameter('method', 0);
+			const baseURL = buildRegularAPIUrl(this, action, serverName);
+			if(method === 'jsonMode'){
+				response = await sendJsonModePOSTRequest(this, baseURL, apiKey);
+			} else if(method === 'fieldMode'){
+				response = await sendFieldModePOSTRequest(this, baseURL, apiKey);
+			}
+		}else if(action === 'retrieveFile'){
+			response = await sendRetrieveFileGETRequest(this, serverName, apiKey);
+			responseType = 'binary';
 		}
 		
+		if(responseType === 'binary'){
+			const fileName = (this.getNodeParameter('fileName', 0) as string).split('@')[1];
+			const parsedResponse = await this.helpers.prepareBinaryData(
+				response,
+				fileName,
+			);
+			const item: INodeExecutionData = {
+				json: parsedResponse,
+				binary: {downloadedFile:parsedResponse},
+			};
+			return this.prepareOutputData([item]);
 
-		// 確保返回的是 JSON 格式
-		let parsedResponse;
-		try {
-			parsedResponse = (
-				typeof responseJson === 'string' ? JSON.parse(responseJson) : responseJson
-			) as IDataObject;
-		} catch (error) {
-			throw new ApplicationError('Failed to parse API response as JSON.');
+		}else{
+			try {
+				const parsedResponse = (
+					typeof response === 'string' ? JSON.parse(response) : response
+				) as IDataObject;
+
+				return [this.helpers.returnJsonArray(parsedResponse)];
+			} catch (error) {
+				throw new ApplicationError('Failed to parse API response as JSON.');
+			}
 		}
-
-		// 返回結構化 JSON 數據
-		return [this.helpers.returnJsonArray(parsedResponse)];
 	}
+}
+
+function buildRegularAPIUrl(iExecuteFunctions: IExecuteFunctions, action:string, serverName:string):string{
+	const path = iExecuteFunctions.getNodeParameter('form', 0);
+	
+	let recordIndex = '';
+	if(action === 'updateExistedData' || action === 'readSingleData'){
+		recordIndex = '/' + (iExecuteFunctions.getNodeParameter('recordIndex', 0) as string);
+	}
+
+	return `https://${serverName}/${path}${recordIndex}?api&n8n`;
 }
 
 async function sendReadDataGETRequest(iExecuteFunctions: IExecuteFunctions, baseURL: string, apiKey: string):Promise<JsonObject> {
@@ -549,4 +635,45 @@ async function sendFieldModePOSTRequest(iExecuteFunctions: IExecuteFunctions, ba
 	})) as JsonObject;
 
 	return responseJson;
+}
+
+async function sendRetrieveFileGETRequest(iExecuteFunctions: IExecuteFunctions, serverName:string, apiKey: string):Promise<IBinaryData> {
+	const fileDownloadWithUserAuthentication = iExecuteFunctions.getNodeParameter('fileDownloadWithUserAuthentication', 0) as boolean;
+	let apName:string;
+	let cookies = [] as string[];
+	
+	if(fileDownloadWithUserAuthentication){
+		const fileRecordUrl = iExecuteFunctions.getNodeParameter('fileRecordUrl', 0) as string;
+		const accessRecordUrl = fileRecordUrl.split('?')[0] + '?api&n8n'
+		const accessRecordResponse = await iExecuteFunctions.helpers.request({
+      method: 'GET',
+      url: accessRecordUrl,
+			headers: {
+				Authorization: `Basic ${apiKey}`,
+			},
+      resolveWithFullResponse: true,
+      json: true,
+    });
+		cookies = accessRecordResponse.headers['set-cookie'];
+		apName = fileRecordUrl.split('/')[3];
+	}else{
+		apName = iExecuteFunctions.getNodeParameter('apName', 0) as string;
+	}
+
+	const cookie = cookies.join(';');
+	const fileName = iExecuteFunctions.getNodeParameter('fileName', 0) as string;
+	const retrieveFileUrl = `https://${serverName}/sims/file.jsp?a=${apName}&f=${fileName}`;
+	const fileBuffer = await iExecuteFunctions.helpers.request({
+		method: 'GET',
+		url: retrieveFileUrl,
+		headers: {
+			Authorization: `Basic ${apiKey}`,
+			Cookie: cookie
+		},
+		encoding: null,
+  	json: false,
+	});
+	
+	return fileBuffer;
+
 }

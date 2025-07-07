@@ -10,7 +10,11 @@ This repository contains a custom n8n node for integrating with Ragic. The node 
 
 * Create: Create records with custom logic in your Ragic database.
 
+* Retrieve File: Retrieve file from your Ragic database.
+
 # Version History
+
+* version 2.2.1 - support feature: Retrieve File
 
 * version 2.1.0 - support feature: Read Data
 
