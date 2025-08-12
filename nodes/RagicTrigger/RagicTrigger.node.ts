@@ -37,8 +37,8 @@ export class RagicTrigger implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Event',
-				name: 'event',
+				displayName: 'Webhook Event',
+				name: 'webhookEvent',				// 若name使用"event"，這個選項就會被當成是這個node的分支，在搜尋此node時，顯示方式會變得比較不友善。
 				type: 'options',
 				options: [
 					{
@@ -87,7 +87,7 @@ export class RagicTrigger implements INodeType {
 				const apName = sheetUrlSection[3];
 				const path = '/' + sheetUrlSection[4];
 				const sheetIndex = sheetUrlSection[5];
-				const event = this.getNodeParameter('event', 0) as string;
+				const event = this.getNodeParameter('webhookEvent', 0) as string;
 				let url = `https://${server}/sims/webhooks.jsp?n8n`;
 				url += `&ap=${apName}`;
 				url += `&path=${path}`;
@@ -119,7 +119,7 @@ export class RagicTrigger implements INodeType {
 				const apName = sheetUrlSection[3];
 				const path = '/' + sheetUrlSection[4];
 				const sheetIndex = sheetUrlSection[5];
-				const event = this.getNodeParameter('event', 0) as string;
+				const event = this.getNodeParameter('webhookEvent', 0) as string;
 				let url = `https://${server}/sims/webhookSubscribe.jsp?n8n`;
 				url += `&ap=${apName}`;
 				url += `&path=${path}`;
@@ -147,7 +147,7 @@ export class RagicTrigger implements INodeType {
 				const apName = sheetUrlSection[3];
 				const path = '/' + sheetUrlSection[4];
 				const sheetIndex = sheetUrlSection[5];
-				const event = this.getNodeParameter('event', 0) as string;
+				const event = this.getNodeParameter('webhookEvent', 0) as string;
 				let url = `https://${server}/sims/webhookUnsubscribe.jsp?n8n`;
 				url += `&ap=${apName}`;
 				url += `&path=${path}`;

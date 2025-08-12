@@ -14,6 +14,8 @@ This repository contains a custom n8n node for integrating with Ragic. The node 
 
 # Version History
 
+* version 2.3.0 - support feature: Upload File, Update Subtable Fields, Setting multiple values in multi-select fields within Field Method; Updated the display name of Ragic Trigger in the nodes panel.; Other bug fixes.
+
 * version 2.2.1 - support feature: Retrieve File
 
 * version 2.1.0 - support feature: Read Data

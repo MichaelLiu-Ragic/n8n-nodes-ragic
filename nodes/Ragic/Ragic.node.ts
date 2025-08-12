@@ -10,7 +10,7 @@ import type {
 	NodeConnectionType,
 	NodeExecutionWithMetadata,
 } from 'n8n-workflow';
-import { ApplicationError } from 'n8n-workflow';
+import { ApplicationError, BINARY_ENCODING } from 'n8n-workflow';
 
 export class Ragic implements INodeType {
 	description: INodeTypeDescription = {
@@ -175,11 +175,99 @@ export class Ragic implements INodeType {
 								
 							},
 							{
+								displayName: 'Content Type',
+								name: 'entries_type',
+								type: 'options',
+								options: [
+									{
+										name: 'Text',
+										value: 'text',
+									},
+									{
+										name: 'File',
+										value: 'file',
+									},
+								],
+								default: 'text',
+								required: true,
+							},
+							{
 								displayName: 'Value',
 								name: 'entries_value',
 								type: 'string',
-								default: ''
-							}
+								default: '',
+							},
+						]
+					}
+				],
+				displayOptions: {
+					show: {
+						action: [
+							'createNewData',
+							'updateExistedData'
+						],
+						method: ['fieldMode'],
+					},
+				},
+			},
+			{		// subtable entries
+				displayName: 'Subtable Entries',
+				name: 'subtableEntries',
+				placeholder: 'Add Subtable Entry',
+				type: 'fixedCollection',
+				default: {},
+				typeOptions: {
+					multipleValues: true,
+				},
+				options: [
+					{
+						name: 'fieldMode_subtable_map',
+						displayName: 'Subtable Entries',
+						values: [
+							{
+									displayName: 'Subtable Record Node ID',
+									name: 'subtable_entries_nodeId',
+									type: 'number',
+									required: true,
+									default: -1,
+									description: 'Subtable record node ID; Enter a negative integer to create new subtable records, use the same negative integer for each new record',
+							},
+							{
+								// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+								displayName: 'Subtable Field',
+								name: 'subtable_entries_field',
+								// eslint-disable-next-line n8n-nodes-base/node-param-description-missing-from-dynamic-options
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'getSubtableFieldOptions',
+									loadOptionsDependsOn: ['credentials', 'form', 'recordIndex'],
+								},
+								default: '',
+								
+							},
+							{
+								displayName: 'Content Type',
+								name: 'subtable_entries_type',
+								type: 'options',
+								options: [
+									{
+										name: 'Text',
+										value: 'text',
+									},
+									{
+										name: 'File',
+										value: 'file',
+									},
+								],
+								default: 'text',
+								required: true,
+							},
+							{
+								displayName: 'Value',
+								name: 'subtable_entries_value',
+								type: 'string',
+								default: '',
+							},
 						]
 					}
 				],
@@ -386,6 +474,7 @@ export class Ragic implements INodeType {
 				description: 'Account name of where the file is at',
 				displayOptions: {
 					show: {
+						action: ['retrieveFile'],
 						fileDownloadWithUserAuthentication: [
 							false
 						]
@@ -401,6 +490,7 @@ export class Ragic implements INodeType {
 				description: 'Please enter the record URL where you upload the file; nevigate to the record and copy the URL, then paste it here',
 				displayOptions: {
 					show: {
+						action: ['retrieveFile'],
 						fileDownloadWithUserAuthentication: [
 							true
 						],
@@ -448,23 +538,8 @@ export class Ragic implements INodeType {
 				return options;
 			},
 			async getFieldOptions(this: ILoadOptionsFunctions){
-				const credentials = await this.getCredentials('ragicApi');
-				const serverName = credentials?.serverName as string;
-				const apiKey = credentials?.apiKey as string;
-				const path = this.getNodeParameter('form', 0);
-				if (path === null || path === ''){
-					return [];
-				}
-				const responseJson = (await this.helpers.request({
-					method: 'GET',
-					url: `https://${serverName}/${path}?api&def&n8n`,
-					headers: {
-						Authorization: `Basic ${apiKey}`,
-					},
-					json: true,
-				})) as JsonObject;
-				
-				const fields = responseJson['fields'] as JsonObject;
+				const formDef = await getFormDef(this);				
+				const fields = formDef['fields'] as JsonObject;
 				
 				const options = [];
 				for (const key of Object.keys(fields)) {
@@ -474,6 +549,27 @@ export class Ragic implements INodeType {
 					const name = info['name'] as string;
 					const displayName = name + ' (' + domainId + ')';
 					options.push({name: displayName, value: domainId});
+				}
+
+				return options;
+			},
+			async getSubtableFieldOptions(this: ILoadOptionsFunctions){
+				const formDef = await getFormDef(this);				
+				const fields = formDef['fields'] as JsonObject;
+				
+				const options = [];
+				for (const key of Object.keys(fields)) {
+					if (!key.startsWith('stid')) continue;
+					const subtableKey = key.substring(4);
+					const subtableDef = fields[key] as JsonObject;
+					for(const subtableDefKey of Object.keys(subtableDef)){
+						if(!subtableDefKey.startsWith('fid')) continue;
+						const domainId = subtableDefKey.substring(3);
+						const info = subtableDef[subtableDefKey] as JsonObject;
+						const name = info['name'] as string;
+						const displayName = name + ' (' + subtableKey + '_' + domainId + ')';
+						options.push({name: displayName, value: subtableKey + '_' + domainId});
+					}
 				}
 
 				return options;
@@ -495,8 +591,8 @@ export class Ragic implements INodeType {
 		const action = this.getNodeParameter('action', 0);
 
 		// 執行 API 請求
-		let responseType = 'JSON' as string;
 		let response;
+		let iBinaryData:IBinaryData|null = null;
 		if(action === 'readData' || action === 'readSingleData'){
 			const baseURL = buildRegularAPIUrl(this, action, serverName);
 			response = await sendReadDataGETRequest(this, baseURL, apiKey);
@@ -509,19 +605,13 @@ export class Ragic implements INodeType {
 				response = await sendFieldModePOSTRequest(this, baseURL, apiKey);
 			}
 		}else if(action === 'retrieveFile'){
-			response = await sendRetrieveFileGETRequest(this, serverName, apiKey);
-			responseType = 'binary';
+			iBinaryData = await sendRetrieveFileGETRequest(this, serverName, apiKey);
 		}
 		
-		if(responseType === 'binary'){
-			const fileName = (this.getNodeParameter('fileName', 0) as string).split('@')[1];
-			const parsedResponse = await this.helpers.prepareBinaryData(
-				response,
-				fileName,
-			);
+		if(iBinaryData){
 			const item: INodeExecutionData = {
-				json: parsedResponse,
-				binary: {downloadedFile:parsedResponse},
+				json: iBinaryData,
+				binary: {downloadedFile:iBinaryData},
 			};
 			return this.prepareOutputData([item]);
 
@@ -615,22 +705,58 @@ async function sendJsonModePOSTRequest(iExecuteFunctions: IExecuteFunctions, bas
 }
 
 async function sendFieldModePOSTRequest(iExecuteFunctions: IExecuteFunctions, baseURL: string, apiKey: string):Promise<JsonObject> {
-	const jsonBody = {} as JsonObject;
-	const entries = iExecuteFunctions.getNodeParameter('entries', 0) as IDataObject;
-	const fieldMode_map = entries['fieldMode_map'] as Array<{entries_field:string, entries_value:string}>;
-	for (const entry of fieldMode_map) {
-		const field = entry.entries_field;
-		const value = entry.entries_value;
-		jsonBody[field] = value;
-	}
+	const formData = {} as IDataObject;
 
+	// 一般欄位 -------------------------------------------------------------
+	const entries = iExecuteFunctions.getNodeParameter('entries', 0) as IDataObject;
+	const fieldMode_map = entries['fieldMode_map'] as Array<{
+		entries_field: string;
+		entries_value?: string;
+		entries_type?: string;        // 'text' 或 'file'
+	}>;
+	if(fieldMode_map){
+		for (const entry of fieldMode_map) {
+			if (entry.entries_type === 'file' && entry.entries_value) {		// 檔案欄位
+				addFormData(entry.entries_field, entry.entries_value, 'file', formData, iExecuteFunctions);
+			}
+			else if (entry.entries_value !== undefined) {		// 純文字欄位
+				addFormData(entry.entries_field, entry.entries_value, 'text', formData, iExecuteFunctions);
+			}
+		}
+	}
+	// -------------------------------------------------------------------
+	
+	// 子表格欄位 ---------------------------------------------------------
+	const subtablentries = iExecuteFunctions.getNodeParameter('subtableEntries', 0) as IDataObject;
+	const fieldMode_subtable_map = subtablentries['fieldMode_subtable_map'] as Array<{
+		subtable_entries_nodeId: number;
+		subtable_entries_field: string;
+		subtable_entries_value?: string;
+		subtable_entries_type?: string;        // 'text' 或 'file'
+	}>;
+	if(fieldMode_subtable_map){
+		for(const subtableEntry of fieldMode_subtable_map){
+			const subtableKey_domainId = subtableEntry.subtable_entries_field;
+			if(subtableKey_domainId.split('_').length !== 2) continue;
+			const domainId = subtableKey_domainId.split('_')[1];
+			const formDataKey = domainId + '_' + subtableEntry.subtable_entries_nodeId;
+
+			if(subtableEntry.subtable_entries_type === 'file' && subtableEntry.subtable_entries_value){
+				addFormData(formDataKey, subtableEntry.subtable_entries_value, 'file', formData, iExecuteFunctions);
+			}else if(subtableEntry.subtable_entries_value !== undefined){
+				addFormData(formDataKey, subtableEntry.subtable_entries_value, 'text', formData, iExecuteFunctions);
+			}
+		}
+	}
+	// ----------------------------------------------------------------
+	
 	const responseJson = (await iExecuteFunctions.helpers.request({
 		method: 'POST',
 		url: `${baseURL}`,
 		headers: {
 			Authorization: `Basic ${apiKey}`,
 		},
-		body: jsonBody,
+		formData,
 		json: true,
 	})) as JsonObject;
 
@@ -661,9 +787,10 @@ async function sendRetrieveFileGETRequest(iExecuteFunctions: IExecuteFunctions, 
 	}
 
 	const cookie = cookies.join(';');
-	const fileName = iExecuteFunctions.getNodeParameter('fileName', 0) as string;
-	const retrieveFileUrl = `https://${serverName}/sims/file.jsp?a=${apName}&f=${fileName}`;
-	const fileBuffer = await iExecuteFunctions.helpers.request({
+	const fullFileName = iExecuteFunctions.getNodeParameter('fileName', 0) as string;
+	const retrieveFileUrl = `https://${serverName}/sims/file.jsp?a=${apName}&f=${fullFileName}`;
+	const fileName = fullFileName.split('@')[1];
+	const stream = await iExecuteFunctions.helpers.request({
 		method: 'GET',
 		url: retrieveFileUrl,
 		headers: {
@@ -674,6 +801,65 @@ async function sendRetrieveFileGETRequest(iExecuteFunctions: IExecuteFunctions, 
   	json: false,
 	});
 	
-	return fileBuffer;
+	return await iExecuteFunctions.helpers.prepareBinaryData(stream, fileName);
 
+}
+
+async function getFormDef(iLoadOptionsFunctions:ILoadOptionsFunctions):Promise<JsonObject>{
+	const credentials = await iLoadOptionsFunctions.getCredentials('ragicApi');
+	const serverName = credentials?.serverName as string;
+	const apiKey = credentials?.apiKey as string;
+	const path = iLoadOptionsFunctions.getNodeParameter('form', 0);
+	if (path === null || path === ''){
+		throw new ApplicationError('invalid path');
+	}
+	const responseJson = (await iLoadOptionsFunctions.helpers.request({
+		method: 'GET',
+		url: `https://${serverName}/${path}?api&def&n8n`,
+		headers: {
+			Authorization: `Basic ${apiKey}`,
+		},
+		json: true,
+	})) as JsonObject;
+
+	return responseJson;
+}
+
+async function addFormData(key:string, value:string, type:string, formData:IDataObject, iExecuteFunctions: IExecuteFunctions):Promise<IDataObject>{
+	if(type === 'file'){
+		// 用 assertBinaryData() 安全取得 IBinaryData 的 metadata（檔名、MIME 類型），
+		// 會檢查該 binary property 是否存在，若不存在會丟出明確錯誤
+		const binaryData = iExecuteFunctions.helpers.assertBinaryData(0, value);
+
+		// 直接從輸入資料中抓 IBinaryData 實體（可能包含 id 或 base64 data），
+		// 不經檢查，因為需要直接取用 .id 或 .data 來決定是用 Buffer 還是 Stream
+		const itemBinaryData = iExecuteFunctions.getInputData(0)[0].binary![value];
+		let uploadData: Buffer | NodeJS.ReadableStream;
+
+		if (itemBinaryData.id) {
+			// 大檔案用 stream
+			uploadData = await iExecuteFunctions.helpers.getBinaryStream(itemBinaryData.id);
+		} else {
+			// 小檔案用 Buffer
+			uploadData = Buffer.from(itemBinaryData.data, BINARY_ENCODING);
+		}
+
+		if (!formData[key]) {
+			formData[key] = [];
+		}
+
+		(formData[key] as IDataObject[]).push({
+			value: uploadData,
+			options: {
+				filename: binaryData.fileName || 'upload.bin',
+				contentType: binaryData.mimeType || 'application/octet-stream',		// 如果沒有提供，application/octet-stream 代表「未知的二進位檔案」，是最安全的通用型別。
+			},
+		});
+	}else if(type === 'text'){
+		if (!formData[key]) {
+			formData[key] = [];
+		}
+		(formData[key] as string[]).push(value);
+	}
+	return formData;
 }
