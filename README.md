@@ -1,25 +1,38 @@
 # Ragic n8n Node
 
-This repository contains a custom n8n node for integrating with Ragic. The node currently supports the following functionalities:
+This repository contains a **custom n8n node** for integrating with **Ragic**.  
+It allows you to automate and interact with your Ragic database directly from n8n workflows.
 
-* Webhook: Listen for real-time events from Ragic.
+## Features
 
-* Read: Read records in your Ragic database.
+The node currently supports the following functionalities:
 
-* Update: Update existing records in your Ragic database.
+- **Webhook**: Listen for real-time events from Ragic.
+- **Read**: Retrieve records from your Ragic database.
+- **Update**: Update existing records in your Ragic database.
+- **Create**: Create new records with custom logic in your Ragic database.
+- **Retrieve File**: Fetch files from your Ragic database.
 
-* Create: Create records with custom logic in your Ragic database.
+## Version History
 
-* Retrieve File: Retrieve file from your Ragic database.
+- **v2.3.1**
+  - Bug fix: Corrected behavior when creating/updating records so that **formula**, **default value**, **link & load**, **workflow**, and **notification** are properly executed.
 
-# Version History
+- **v2.3.0**
+  - Added support for **Upload File**
+  - Added **Update Subtable Fields**
+  - Support for setting **multiple values in multi-select fields** within Field Method
+  - Updated display name of **Ragic Trigger** in the nodes panel
+  - Other bug fixes
 
-* version 2.3.0 - support feature: Upload File, Update Subtable Fields, Setting multiple values in multi-select fields within Field Method; Updated the display name of Ragic Trigger in the nodes panel.; Other bug fixes.
+- **v2.2.1**
+  - Added support for **Retrieve File**
 
-* version 2.2.1 - support feature: Retrieve File
+- **v2.1.0**
+  - Added support for **Read Data**
 
-* version 2.1.0 - support feature: Read Data
+- **v2.0.0**
+  - Added support for **field-based configuration**
 
-* version 2.0.0 - added support for field-based configuration
-
-* version 1.0.0 - support feature: Webhook, Update, Create
+- **v1.0.0**
+  - Initial release: **Webhook**, **Update**, **Create**

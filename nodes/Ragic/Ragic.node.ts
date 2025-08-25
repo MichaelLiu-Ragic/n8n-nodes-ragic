@@ -598,7 +598,8 @@ export class Ragic implements INodeType {
 			response = await sendReadDataGETRequest(this, baseURL, apiKey);
 		}else if(action === 'createNewData' || action === 'updateExistedData'){
 			const method = this.getNodeParameter('method', 0);
-			const baseURL = buildRegularAPIUrl(this, action, serverName);
+			let baseURL = buildRegularAPIUrl(this, action, serverName);
+			baseURL = addParametersToPOSTRequest(baseURL, action);
 			if(method === 'jsonMode'){
 				response = await sendJsonModePOSTRequest(this, baseURL, apiKey);
 			} else if(method === 'fieldMode'){
@@ -862,4 +863,18 @@ async function addFormData(key:string, value:string, type:string, formData:IData
 		(formData[key] as string[]).push(value);
 	}
 	return formData;
+}
+
+function addParametersToPOSTRequest(url:string, action:string):string{
+	if(action !== 'createNewData' && action !== 'updateExistedData') return url;
+	url += '&doFormula=true';
+	url += '&doDefaultValue=true';
+	url += '&doLinkLoad=true';
+	url += '&doWorkflow=true';
+	url += '&notification=true';
+	if(action === 'updateExistedData'){
+		url += '&checkLock=true';
+	}
+
+	return url;
 }
