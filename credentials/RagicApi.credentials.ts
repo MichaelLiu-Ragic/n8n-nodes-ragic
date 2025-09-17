@@ -1,4 +1,4 @@
-import type { IAuthenticateGeneric, ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { IAuthenticateGeneric, ICredentialType, INodeProperties, ICredentialTestRequest } from 'n8n-workflow';
 
 export class RagicApi implements ICredentialType {
 	name = 'ragicApi';
@@ -38,7 +38,7 @@ export class RagicApi implements ICredentialType {
 		},
 	};
 
-	test = {
+	test: ICredentialTestRequest = {
 		request:{
 			baseURL: '={{"https://" + $credentials.serverName}}',
 			url: '/api/n8n/n8nCredentialCheck.jsp',
