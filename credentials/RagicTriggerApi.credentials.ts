@@ -37,4 +37,47 @@ export class RagicTriggerApi implements ICredentialType {
 			},
 		},
 	};
+
+	test = {
+		request:{
+			baseURL: '={{($credentials.sheetUrl).split("/")[0] + "//" + ($credentials.sheetUrl).split("/")[2]}}',
+			url: '/api/n8n/n8nCredentialCheck.jsp',
+			headers: {
+				Authorization: '={{"Basic " + $credentials.apiKey}}',
+			},
+			qs: {
+				n8n: 'true',
+				nodeType: 'trigger',
+				ap: '={{($credentials.sheetUrl).split("/")[3]}}',
+				path: '={{"/" + ($credentials.sheetUrl).split("/")[4]}}',
+				sheetIndex: '={{($credentials.sheetUrl).split("/")[5]}}',
+			}
+		},
+		rules:[			// 雖然type是responseSuccessBody，但實際上是用來處理錯誤的。
+			{
+				type: 'responseSuccessBody' as const,
+				properties: {
+					key: 'code',
+					value: 400,
+					message: 'Bad Request',
+				},
+			},
+			{
+				type: 'responseSuccessBody' as const,
+				properties: {
+					key: 'code',
+					value: 403,
+					message: 'Permission Denied',
+				},
+			},
+			{
+				type: 'responseSuccessBody' as const,
+				properties: {
+					key: 'code',
+					value: 404,
+					message: 'Form Not Found',
+				},
+			}
+		]
+	}
 }

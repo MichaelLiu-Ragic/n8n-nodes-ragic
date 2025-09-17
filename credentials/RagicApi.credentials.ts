@@ -37,4 +37,28 @@ export class RagicApi implements ICredentialType {
 			},
 		},
 	};
+
+	test = {
+		request:{
+			baseURL: '={{"https://" + $credentials.serverName}}',
+			url: '/api/n8n/n8nCredentialCheck.jsp',
+			headers: {
+				Authorization: '={{"Basic " + $credentials.apiKey}}',
+			},
+			qs: {
+				n8n: 'true',
+				nodeType: 'action',
+			}
+		},
+		rules:[			// 雖然type是responseSuccessBody，但實際上是用來處理錯誤的。
+			{
+				type: 'responseSuccessBody' as const,
+				properties: {
+					key: 'code',
+					value: 403,
+					message: 'Permission Denied',
+				},
+			}
+		]
+	}
 }

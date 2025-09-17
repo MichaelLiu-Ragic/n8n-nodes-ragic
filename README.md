@@ -15,6 +15,9 @@ The node currently supports the following functionalities:
 
 ## Version History
 
+- **v2.4.0**
+  - Added support for **credential verification**
+
 - **v2.3.1**
   - Bug fix: Corrected behavior when creating/updating records so that **formula**, **default value**, **link & load**, **workflow**, and **notification** are properly executed.
 
