@@ -19,13 +19,13 @@ export class RagicApi implements ICredentialType {
 				'Please refer to <a href="https://www.ragic.com/intl/en/doc-user/20/personal-settings#4">here</a>',
 		},
 		{
-			displayName: 'Server Name',
-			name: 'serverName',
+			displayName: 'Server Url',
+			name: 'serverUrl',
 			type: 'string',
 			default: '',
 			required: true,
 			description:
-				'You can find the server name in your database url, from the frist charactor after "https://" til the charactor before the next "/". It should be like "www.ragic.com" or "ap5.ragic.com".',
+				'You can obtain the server URL from the web address of your database, copy the part of the URL from the start up to the domain, example: https://ap12.ragic.com',
 		},
 	];
 
@@ -40,7 +40,7 @@ export class RagicApi implements ICredentialType {
 
 	test: ICredentialTestRequest = {
 		request:{
-			baseURL: '={{"https://" + $credentials.serverName}}',
+			baseURL: '={{$credentials.serverUrl}}',
 			url: '/api/n8n/n8nCredentialCheck.jsp',
 			headers: {
 				Authorization: '={{"Basic " + $credentials.apiKey}}',

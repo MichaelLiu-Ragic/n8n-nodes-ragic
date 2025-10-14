@@ -129,7 +129,38 @@ export class Ragic implements INodeType {
 				},
 				default: '',
 				description:
-					'You can find the Record Index from the URL. Record URL structure: http://{domain}/{database}/{path}/{form}/{record index}?.',
+					'You can find the Record Index from the URL. Record URL structure: https://{domain}/{database}/{path}/{form}/{record index}?.',
+			},
+			{		// doFormula
+				displayName: 'Do Formula',
+				name: 'ifDoFormula',
+				type: 'boolean',
+				default: true,
+				description: 'Whether to recalculate all formulas first when a record is created or updated; Do note that if this is set to true, the workflow scripts that you configured on the sheet will not run to avoid infinite loops',
+				displayOptions: {
+					show: {
+						action: [
+							'createNewData',
+							'updateExistedData'
+						],
+					}
+				},
+			},
+			{		// priority of doing link & load
+				displayName: 'Run Link & Load Before Formula',
+				name: 'ifRunLinkAndLoadBeforeFormula',
+				type: 'boolean',
+				default: true,
+				description: 'Whether Link & Load fields are executed before formula evaluation',
+				displayOptions: {
+					show: {
+						action: [
+							'createNewData',
+							'updateExistedData'
+						],
+						ifDoFormula:[true]
+					}
+				},
 			},
 			{		// json body
 				displayName: 'JSON Body',
@@ -519,11 +550,11 @@ export class Ragic implements INodeType {
 		loadOptions: {
 			async getFormOptions(this: ILoadOptionsFunctions) {
 				const credentials = await this.getCredentials('ragicApi');
-				const serverName = credentials?.serverName as string;
+				const serverUrl = credentials?.serverUrl as string;
 				const apiKey = credentials?.apiKey as string;
 				const responseJson = (await this.helpers.request({
 					method: 'GET',
-					url: `https://${serverName}/api/http/integromatForms.jsp?n8n`,
+					url: `${serverUrl}/api/http/integromatForms.jsp?n8n`,
 					headers: {
 						Authorization: `Basic ${apiKey}`,
 					},
@@ -585,8 +616,7 @@ export class Ragic implements INodeType {
 		// 獲取憑據
 		const credentials = await this.getCredentials('ragicApi');
 
-		// 獲取 serverName
-		const serverName = credentials?.serverName as string;
+		const serverUrl = credentials?.serverUrl as string;
 		const apiKey = credentials?.apiKey as string;
 		const action = this.getNodeParameter('action', 0);
 
@@ -594,25 +624,25 @@ export class Ragic implements INodeType {
 		let response;
 		let iBinaryData:IBinaryData|null = null;
 		if(action === 'readData' || action === 'readSingleData'){
-			const baseURL = buildRegularAPIUrl(this, action, serverName);
+			const baseURL = buildRegularAPIUrl(this, action, serverUrl);
 			response = await sendReadDataGETRequest(this, baseURL, apiKey);
 		}else if(action === 'createNewData' || action === 'updateExistedData'){
 			const method = this.getNodeParameter('method', 0);
-			let baseURL = buildRegularAPIUrl(this, action, serverName);
-			baseURL = addParametersToPOSTRequest(baseURL, action);
+			let baseURL = buildRegularAPIUrl(this, action, serverUrl);
+			baseURL = addParametersToPOSTRequest(baseURL, action, this);
 			if(method === 'jsonMode'){
 				response = await sendJsonModePOSTRequest(this, baseURL, apiKey);
 			} else if(method === 'fieldMode'){
 				response = await sendFieldModePOSTRequest(this, baseURL, apiKey);
 			}
 		}else if(action === 'retrieveFile'){
-			iBinaryData = await sendRetrieveFileGETRequest(this, serverName, apiKey);
+			iBinaryData = await sendRetrieveFileGETRequest(this, serverUrl, apiKey);
 		}
 		
 		if(iBinaryData){
 			const item: INodeExecutionData = {
 				json: iBinaryData,
-				binary: {downloadedFile:iBinaryData},
+				binary: {[(iBinaryData.fileName?iBinaryData.fileName:'downloadedFile')]:iBinaryData},
 			};
 			return this.prepareOutputData([item]);
 
@@ -630,7 +660,7 @@ export class Ragic implements INodeType {
 	}
 }
 
-function buildRegularAPIUrl(iExecuteFunctions: IExecuteFunctions, action:string, serverName:string):string{
+function buildRegularAPIUrl(iExecuteFunctions: IExecuteFunctions, action:string, serverUrl:string):string{
 	const path = iExecuteFunctions.getNodeParameter('form', 0);
 	
 	let recordIndex = '';
@@ -638,7 +668,7 @@ function buildRegularAPIUrl(iExecuteFunctions: IExecuteFunctions, action:string,
 		recordIndex = '/' + (iExecuteFunctions.getNodeParameter('recordIndex', 0) as string);
 	}
 
-	return `https://${serverName}/${path}${recordIndex}?api&n8n`;
+	return `${serverUrl}/${path}${recordIndex}?api&n8n`;
 }
 
 async function sendReadDataGETRequest(iExecuteFunctions: IExecuteFunctions, baseURL: string, apiKey: string):Promise<JsonObject> {
@@ -764,7 +794,7 @@ async function sendFieldModePOSTRequest(iExecuteFunctions: IExecuteFunctions, ba
 	return responseJson;
 }
 
-async function sendRetrieveFileGETRequest(iExecuteFunctions: IExecuteFunctions, serverName:string, apiKey: string):Promise<IBinaryData> {
+async function sendRetrieveFileGETRequest(iExecuteFunctions: IExecuteFunctions, serverUrl:string, apiKey: string):Promise<IBinaryData> {
 	const fileDownloadWithUserAuthentication = iExecuteFunctions.getNodeParameter('fileDownloadWithUserAuthentication', 0) as boolean;
 	let apName:string;
 	let cookies = [] as string[];
@@ -789,7 +819,7 @@ async function sendRetrieveFileGETRequest(iExecuteFunctions: IExecuteFunctions, 
 
 	const cookie = cookies.join(';');
 	const fullFileName = iExecuteFunctions.getNodeParameter('fileName', 0) as string;
-	const retrieveFileUrl = `https://${serverName}/sims/file.jsp?a=${apName}&f=${fullFileName}`;
+	const retrieveFileUrl = `${serverUrl}/sims/file.jsp?a=${apName}&f=${fullFileName}`;
 	const fileName = fullFileName.split('@')[1];
 	const stream = await iExecuteFunctions.helpers.request({
 		method: 'GET',
@@ -808,7 +838,7 @@ async function sendRetrieveFileGETRequest(iExecuteFunctions: IExecuteFunctions, 
 
 async function getFormDef(iLoadOptionsFunctions:ILoadOptionsFunctions):Promise<JsonObject>{
 	const credentials = await iLoadOptionsFunctions.getCredentials('ragicApi');
-	const serverName = credentials?.serverName as string;
+	const serverUrl = credentials?.serverUrl as string;
 	const apiKey = credentials?.apiKey as string;
 	const path = iLoadOptionsFunctions.getNodeParameter('form', 0);
 	if (path === null || path === ''){
@@ -816,7 +846,7 @@ async function getFormDef(iLoadOptionsFunctions:ILoadOptionsFunctions):Promise<J
 	}
 	const responseJson = (await iLoadOptionsFunctions.helpers.request({
 		method: 'GET',
-		url: `https://${serverName}/${path}?api&def&n8n`,
+		url: `${serverUrl}/${path}?api&def&n8n`,
 		headers: {
 			Authorization: `Basic ${apiKey}`,
 		},
@@ -865,11 +895,17 @@ async function addFormData(key:string, value:string, type:string, formData:IData
 	return formData;
 }
 
-function addParametersToPOSTRequest(url:string, action:string):string{
+function addParametersToPOSTRequest(url:string, action:string, iExecuteFunctions:IExecuteFunctions):string{
 	if(action !== 'createNewData' && action !== 'updateExistedData') return url;
-	url += '&doFormula=true';
+	const ifDoFormula = iExecuteFunctions.getNodeParameter('ifDoFormula', 0) as boolean;
+	if(ifDoFormula){
+		url += '&doFormula=true';
+		const ifRunLinkAndLoadBeforeFormula = iExecuteFunctions.getNodeParameter('ifRunLinkAndLoadBeforeFormula', 0) as boolean;
+		url += ('&doLinkLoad=' + (ifRunLinkAndLoadBeforeFormula?'first':'true'));
+	}else{
+		url += '&doLinkLoad=first';
+	}
 	url += '&doDefaultValue=true';
-	url += '&doLinkLoad=true';
 	url += '&doWorkflow=true';
 	url += '&notification=true';
 	if(action === 'updateExistedData'){

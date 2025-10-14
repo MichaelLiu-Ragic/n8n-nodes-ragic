@@ -15,6 +15,14 @@ The node currently supports the following functionalities:
 
 ## Version History
 
+- **v2.5.0**
+  - **Credential Update**: Adjusted credential settings of **Ragic Action Node** to support **private servers**.
+    *(Note: Users upgrading to this version need to update their existing credentials, regardless of whether they are connecting to a private server or not.)*
+  - **Enhanced Create/Update Operations**:
+    - Added options to **recalculate all formulas** when creating or updating records.
+    - Added control over the timing of **Link & Load field loading** for formulas.
+  - **Retrieve File Optimization**: Improved output values for better usability in workflows.
+
 - **v2.4.0**
   - Added support for **credential verification**
 

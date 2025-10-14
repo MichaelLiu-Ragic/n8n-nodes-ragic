@@ -6,6 +6,7 @@ import {
 	type IWebhookResponseData,
 	type NodeConnectionType,
 	jsonParse,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
 
 export class RagicTrigger implements INodeType {
@@ -78,87 +79,44 @@ export class RagicTrigger implements INodeType {
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
-				const credentials = await this.getCredentials('ragicTriggerApi');
-				const webhookUrl = this.getNodeWebhookUrl('default') as string;
-				const apiKey = credentials?.apiKey as string;
-				const sheetUrl = credentials?.sheetUrl as string;
-				const sheetUrlSection = sheetUrl.split('/');
-				const server = sheetUrlSection[2];
-				const apName = sheetUrlSection[3];
-				const path = '/' + sheetUrlSection[4];
-				const sheetIndex = sheetUrlSection[5];
-				const event = this.getNodeParameter('webhookEvent', 0) as string;
-				let url = `https://${server}/sims/webhooks.jsp?n8n`;
-				url += `&ap=${apName}`;
-				url += `&path=${path}`;
-				url += `&si=${sheetIndex}`;
-				url += `&url=${webhookUrl}`;
-				url += `&event=${event}`;
+				const webhookInfo = await getWebhookInfo(this, 'check');
+				const url = webhookInfo.requestUrl;
 				const responseString = (await this.helpers.request({
-					method: 'GET',
+					method: webhookInfo.requestMethod,
 					url,
 					headers: {
-						Authorization: `Basic ${apiKey}`,
+						Authorization: webhookInfo.requestAuthorization,
 					},
 				})) as string;
 				const responseJSONArray = jsonParse(responseString) as [];
 				for (let index = 0; index < responseJSONArray.length; index++) {
 					const subscribedUrl = responseJSONArray[index]['url'];
 					const subscribedWebhookEvent = responseJSONArray[index]['event'];
-					if (subscribedUrl === webhookUrl && subscribedWebhookEvent === event) return true;
+					if (subscribedUrl === webhookInfo.webhookUrl && subscribedWebhookEvent === webhookInfo.event) return true;
 				}
 				return false;
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
-				const credentials = await this.getCredentials('ragicTriggerApi');
-				const webhookUrl = this.getNodeWebhookUrl('default') as string;
-				const apiKey = credentials?.apiKey as string;
-				const sheetUrl = credentials?.sheetUrl as string;
-				const sheetUrlSection = sheetUrl.split('/');
-				const server = sheetUrlSection[2];
-				const apName = sheetUrlSection[3];
-				const path = '/' + sheetUrlSection[4];
-				const sheetIndex = sheetUrlSection[5];
-				const event = this.getNodeParameter('webhookEvent', 0) as string;
-				let url = `https://${server}/sims/webhookSubscribe.jsp?n8n`;
-				url += `&ap=${apName}`;
-				url += `&path=${path}`;
-				url += `&si=${sheetIndex}`;
-				url += `&url=${webhookUrl}`;
-				url += `&event=${event}`;
+				const webhookInfo = await getWebhookInfo(this, 'create');
+				const url = webhookInfo.requestUrl;
 				await this.helpers.request({
-					method: 'GET',
+					method: webhookInfo.requestMethod,
 					url,
 					headers: {
-						Authorization: `Basic ${apiKey}`,
+						Authorization: webhookInfo.requestAuthorization,
 					},
 					json: true,
 				});
-
 				return true;
 			},
 			async delete(this: IHookFunctions): Promise<boolean> {
-				const credentials = await this.getCredentials('ragicTriggerApi');
-				const webhookUrl = this.getNodeWebhookUrl('default') as string;
-				const apiKey = credentials?.apiKey as string;
-				const sheetUrl = credentials?.sheetUrl as string;
-				const sheetUrlSection = sheetUrl.split('/');
-				const server = sheetUrlSection[2];
-				const apName = sheetUrlSection[3];
-				const path = '/' + sheetUrlSection[4];
-				const sheetIndex = sheetUrlSection[5];
-				const event = this.getNodeParameter('webhookEvent', 0) as string;
-				let url = `https://${server}/sims/webhookUnsubscribe.jsp?n8n`;
-				url += `&ap=${apName}`;
-				url += `&path=${path}`;
-				url += `&si=${sheetIndex}`;
-				url += `&url=${webhookUrl}`;
-				url += `&event=${event}`;
+				const webhookInfo = await getWebhookInfo(this, 'delete');
+				const url = webhookInfo.requestUrl;
 				await this.helpers.request({
-					method: 'GET',
+					method: webhookInfo.requestMethod,
 					url,
 					headers: {
-						Authorization: `Basic ${apiKey}`,
+						Authorization: webhookInfo.requestAuthorization,
 					},
 					json: true,
 				});
@@ -166,4 +124,54 @@ export class RagicTrigger implements INodeType {
 			},
 		},
 	};
+}
+
+async function getWebhookInfo(iHookFuncions:IHookFunctions, webhookAction:'check'|'create'|'delete'):Promise<{ requestMethod: IHttpRequestMethods; requestUrl: string; requestAuthorization: string; webhookUrl: string; event: string}>{
+	const credentials = await iHookFuncions.getCredentials('ragicTriggerApi');
+	const webhookUrl = iHookFuncions.getNodeWebhookUrl('default') as string;
+	const apiKey = credentials?.apiKey as string;
+	const sheetUrl = credentials?.sheetUrl as string;
+	const sheetUrlInfo = getFormUrlInfo(sheetUrl);
+	const event = iHookFuncions.getNodeParameter('webhookEvent', 0) as string;
+	let requestTarget = '/sims/';
+	switch(webhookAction){
+		case 'check':
+			requestTarget += 'webhooks.jsp';
+			break;
+		case 'create':
+			requestTarget += 'webhookSubscribe.jsp';
+			break;
+		case 'delete':
+			requestTarget += 'webhookUnsubscribe.jsp';
+			break;
+	}
+	let url = `${sheetUrlInfo.serverUrl}${requestTarget}?n8n`;
+	url += `&ap=${sheetUrlInfo.apname}`;
+	url += `&path=${sheetUrlInfo.path}`;
+	url += `&si=${sheetUrlInfo.sheetIndex}`;
+	url += `&url=${webhookUrl}`;
+	url += `&event=${event}`;
+
+	return {
+		requestMethod: 'GET',
+		requestUrl: url,
+		requestAuthorization: `Basic ${apiKey}`,
+		webhookUrl: webhookUrl,
+		event: event
+	}
+}
+
+function getFormUrlInfo(sheetUrl: string):{serverUrl:string, apname:string, path:string, sheetIndex:string}{
+	const sheetUrlSec = sheetUrl.split('/');
+	const serverUrl = sheetUrlSec[0] + '//' + sheetUrlSec[2];
+	const apname = sheetUrlSec[3];
+	const path = '/' + sheetUrlSec[4];
+	const sheetIndex = sheetUrlSec[5];
+
+	return {
+		serverUrl: serverUrl,
+		apname: apname,
+		path: path,
+		sheetIndex: sheetIndex
+	}
 }
