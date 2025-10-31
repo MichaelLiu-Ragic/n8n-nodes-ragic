@@ -15,6 +15,9 @@ The node currently supports the following functionalities:
 
 ## Version History
 
+- **v2.6.0**
+  - Internal improvements and compatibility updates.
+
 - **v2.5.0**
   - **Credential Update**: Adjusted credential settings of **Ragic Action Node** to support **private servers**.
     *(Note: Users upgrading to this version need to update their existing credentials, regardless of whether they are connecting to a private server or not.)*

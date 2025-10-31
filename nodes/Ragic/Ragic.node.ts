@@ -11,6 +11,7 @@ import type {
 	NodeExecutionWithMetadata,
 } from 'n8n-workflow';
 import { ApplicationError, BINARY_ENCODING } from 'n8n-workflow';
+import FormData from 'form-data';
 
 export class Ragic implements INodeType {
 	description: INodeTypeDescription = {
@@ -552,14 +553,18 @@ export class Ragic implements INodeType {
 				const credentials = await this.getCredentials('ragicApi');
 				const serverUrl = credentials?.serverUrl as string;
 				const apiKey = credentials?.apiKey as string;
-				const responseJson = (await this.helpers.request({
-					method: 'GET',
-					url: `${serverUrl}/api/http/integromatForms.jsp?n8n`,
-					headers: {
-						Authorization: `Basic ${apiKey}`,
-					},
-					json: true,
-				})) as JsonObject;
+				const responseJson = (await this.helpers.httpRequestWithAuthentication.call(
+					this,
+					'ragicApi',
+					{
+						method: 'GET',
+						url: `${serverUrl}/api/http/integromatForms.jsp?n8n`,
+						headers: {
+							Authorization: `Basic ${apiKey}`,
+						},
+						json: true,
+					}
+				)) as JsonObject;
 
 				const options = [];
 				for (const key of Object.keys(responseJson)) {
@@ -639,10 +644,16 @@ export class Ragic implements INodeType {
 			iBinaryData = await sendRetrieveFileGETRequest(this, serverUrl, apiKey);
 		}
 		
+
+		// pairedItem 用來告訴 n8n workflow，這個輸出 item 是從哪個輸入 item 產生的
+		// 例如：pairedItem: { item: 0 } 表示「這筆輸出資料來自輸入陣列 index 0 的那筆資料」
+		// 目前 node 預期只會處理單筆輸入，寫死 { item: 0 } 沒問題
+		// 若之後可能處理多筆輸入，這裡需要修改
 		if(iBinaryData){
 			const item: INodeExecutionData = {
 				json: iBinaryData,
 				binary: {[(iBinaryData.fileName?iBinaryData.fileName:'downloadedFile')]:iBinaryData},
+				pairedItem: { item: 0 },
 			};
 			return this.prepareOutputData([item]);
 
@@ -652,7 +663,19 @@ export class Ragic implements INodeType {
 					typeof response === 'string' ? JSON.parse(response) : response
 				) as IDataObject;
 
-				return [this.helpers.returnJsonArray(parsedResponse)];
+				const outputItems: INodeExecutionData[] = Array.isArray(parsedResponse)
+            ? parsedResponse.map((data) => ({
+                  json: data,
+                  pairedItem: { item: 0 },
+              }))
+            : [
+                  {
+                      json: parsedResponse,
+                      pairedItem: { item: 0 },
+                  },
+              ];
+
+				return [outputItems];
 			} catch (error) {
 				throw new ApplicationError('Failed to parse API response as JSON.');
 			}
@@ -709,34 +732,44 @@ async function sendReadDataGETRequest(iExecuteFunctions: IExecuteFunctions, base
 		baseURL += '&ignoreMask=true'
 	}
 	
-	const responseJson = (await iExecuteFunctions.helpers.request({
-		method: 'GET',
-		url: baseURL,
-		headers: {
-			Authorization: `Basic ${apiKey}`,
-		},
-		json: true,
-	})) as JsonObject;
+	const responseJson = (await iExecuteFunctions.helpers.httpRequestWithAuthentication.call(
+		iExecuteFunctions,
+		'ragicApi',
+		{
+			method: 'GET',
+			url: baseURL,
+			headers: {
+				Authorization: `Basic ${apiKey}`,
+			},
+			json: true,
+		}
+	)) as JsonObject;
 
 	return responseJson;
 }
 
 async function sendJsonModePOSTRequest(iExecuteFunctions: IExecuteFunctions, baseURL: string, apiKey: string):Promise<JsonObject> {
-	const responseJson = (await iExecuteFunctions.helpers.request({
-		method: 'POST',
-		url: `${baseURL}`,
-		headers: {
-			Authorization: `Basic ${apiKey}`,
-		},
-		body: iExecuteFunctions.getNodeParameter('jsonBody', 0),
-		json: true,
-	})) as JsonObject;
+	const jsonBody = JSON.parse(iExecuteFunctions.getNodeParameter('jsonBody', 0) as string);
+	
+	const responseJson = (await iExecuteFunctions.helpers.httpRequestWithAuthentication.call(
+		iExecuteFunctions,
+		'ragicApi',
+		{
+			method: 'POST',
+			url: baseURL,
+			headers: {
+				Authorization: `Basic ${apiKey}`,
+			},
+			body: jsonBody,
+			json: true,
+		}
+	)) as JsonObject;
 
 	return responseJson;
 }
 
 async function sendFieldModePOSTRequest(iExecuteFunctions: IExecuteFunctions, baseURL: string, apiKey: string):Promise<JsonObject> {
-	const formData = {} as IDataObject;
+	const formData = new FormData();
 
 	// 一般欄位 -------------------------------------------------------------
 	const entries = iExecuteFunctions.getNodeParameter('entries', 0) as IDataObject;
@@ -781,15 +814,19 @@ async function sendFieldModePOSTRequest(iExecuteFunctions: IExecuteFunctions, ba
 	}
 	// ----------------------------------------------------------------
 	
-	const responseJson = (await iExecuteFunctions.helpers.request({
-		method: 'POST',
-		url: `${baseURL}`,
-		headers: {
-			Authorization: `Basic ${apiKey}`,
-		},
-		formData,
-		json: true,
-	})) as JsonObject;
+	const responseJson = (await iExecuteFunctions.helpers.httpRequestWithAuthentication.call(
+		iExecuteFunctions,
+		'ragicApi',
+		{
+			method: 'POST',
+			url: `${baseURL}`,
+			headers: {
+				Authorization: `Basic ${apiKey}`,
+			},
+			body: formData,
+			json: true,
+		}
+	)) as JsonObject;
 
 	return responseJson;
 }
@@ -802,15 +839,19 @@ async function sendRetrieveFileGETRequest(iExecuteFunctions: IExecuteFunctions, 
 	if(fileDownloadWithUserAuthentication){
 		const fileRecordUrl = iExecuteFunctions.getNodeParameter('fileRecordUrl', 0) as string;
 		const accessRecordUrl = fileRecordUrl.split('?')[0] + '?api&n8n'
-		const accessRecordResponse = await iExecuteFunctions.helpers.request({
-      method: 'GET',
-      url: accessRecordUrl,
-			headers: {
-				Authorization: `Basic ${apiKey}`,
-			},
-      resolveWithFullResponse: true,
-      json: true,
-    });
+		const accessRecordResponse = await iExecuteFunctions.helpers.httpRequestWithAuthentication.call(
+			iExecuteFunctions,
+			'ragicApi',
+			{
+				method: 'GET',
+				url: accessRecordUrl,
+				headers: {
+					Authorization: `Basic ${apiKey}`,
+				},
+				returnFullResponse: true,
+				json: true,
+			}
+		);
 		cookies = accessRecordResponse.headers['set-cookie'];
 		apName = fileRecordUrl.split('/')[3];
 	}else{
@@ -821,16 +862,20 @@ async function sendRetrieveFileGETRequest(iExecuteFunctions: IExecuteFunctions, 
 	const fullFileName = iExecuteFunctions.getNodeParameter('fileName', 0) as string;
 	const retrieveFileUrl = `${serverUrl}/sims/file.jsp?a=${apName}&f=${fullFileName}`;
 	const fileName = fullFileName.split('@')[1];
-	const stream = await iExecuteFunctions.helpers.request({
-		method: 'GET',
-		url: retrieveFileUrl,
-		headers: {
-			Authorization: `Basic ${apiKey}`,
-			Cookie: cookie
-		},
-		encoding: null,
-  	json: false,
-	});
+	const stream = await iExecuteFunctions.helpers.httpRequestWithAuthentication.call(
+		iExecuteFunctions,
+		'ragicApi',
+		{
+			method: 'GET',
+			url: retrieveFileUrl,
+			headers: {
+				Authorization: `Basic ${apiKey}`,
+				Cookie: cookie
+			},
+			encoding: 'stream',
+			json: false,
+		}
+	);
 	
 	return await iExecuteFunctions.helpers.prepareBinaryData(stream, fileName);
 
@@ -844,19 +889,23 @@ async function getFormDef(iLoadOptionsFunctions:ILoadOptionsFunctions):Promise<J
 	if (path === null || path === ''){
 		throw new ApplicationError('invalid path');
 	}
-	const responseJson = (await iLoadOptionsFunctions.helpers.request({
-		method: 'GET',
-		url: `${serverUrl}/${path}?api&def&n8n`,
-		headers: {
-			Authorization: `Basic ${apiKey}`,
-		},
-		json: true,
-	})) as JsonObject;
+	const responseJson = (await iLoadOptionsFunctions.helpers.httpRequestWithAuthentication.call(
+		iLoadOptionsFunctions,
+		'ragicApi',
+		{
+			method: 'GET',
+			url: `${serverUrl}/${path}?api&def&n8n`,
+			headers: {
+				Authorization: `Basic ${apiKey}`,
+			},
+			json: true,
+		}
+	)) as JsonObject;
 
 	return responseJson;
 }
 
-async function addFormData(key:string, value:string, type:string, formData:IDataObject, iExecuteFunctions: IExecuteFunctions):Promise<IDataObject>{
+async function addFormData(key:string, value:string, type:string, formData:FormData, iExecuteFunctions: IExecuteFunctions):Promise<FormData>{
 	if(type === 'file'){
 		// 用 assertBinaryData() 安全取得 IBinaryData 的 metadata（檔名、MIME 類型），
 		// 會檢查該 binary property 是否存在，若不存在會丟出明確錯誤
@@ -875,22 +924,13 @@ async function addFormData(key:string, value:string, type:string, formData:IData
 			uploadData = Buffer.from(itemBinaryData.data, BINARY_ENCODING);
 		}
 
-		if (!formData[key]) {
-			formData[key] = [];
-		}
-
-		(formData[key] as IDataObject[]).push({
-			value: uploadData,
-			options: {
+		formData.append(key, uploadData, {
 				filename: binaryData.fileName || 'upload.bin',
 				contentType: binaryData.mimeType || 'application/octet-stream',		// 如果沒有提供，application/octet-stream 代表「未知的二進位檔案」，是最安全的通用型別。
-			},
-		});
+			});
+
 	}else if(type === 'text'){
-		if (!formData[key]) {
-			formData[key] = [];
-		}
-		(formData[key] as string[]).push(value);
+		formData.append(key, value);
 	}
 	return formData;
 }

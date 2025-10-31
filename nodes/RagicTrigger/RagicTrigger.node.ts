@@ -5,7 +5,6 @@ import {
 	type IWebhookFunctions,
 	type IWebhookResponseData,
 	type NodeConnectionType,
-	jsonParse,
 	IHttpRequestMethods,
 } from 'n8n-workflow';
 
@@ -81,14 +80,18 @@ export class RagicTrigger implements INodeType {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
 				const webhookInfo = await getWebhookInfo(this, 'check');
 				const url = webhookInfo.requestUrl;
-				const responseString = (await this.helpers.request({
-					method: webhookInfo.requestMethod,
-					url,
-					headers: {
-						Authorization: webhookInfo.requestAuthorization,
-					},
-				})) as string;
-				const responseJSONArray = jsonParse(responseString) as [];
+				const responseJSONArray = (await this.helpers.httpRequestWithAuthentication.call(
+					this,
+					'ragicTriggerApi',
+					{
+						method: webhookInfo.requestMethod,
+						url,
+						headers: {
+							Authorization: webhookInfo.requestAuthorization,
+						},
+					}
+				)) as [];
+				
 				for (let index = 0; index < responseJSONArray.length; index++) {
 					const subscribedUrl = responseJSONArray[index]['url'];
 					const subscribedWebhookEvent = responseJSONArray[index]['event'];
@@ -99,27 +102,35 @@ export class RagicTrigger implements INodeType {
 			async create(this: IHookFunctions): Promise<boolean> {
 				const webhookInfo = await getWebhookInfo(this, 'create');
 				const url = webhookInfo.requestUrl;
-				await this.helpers.request({
-					method: webhookInfo.requestMethod,
-					url,
-					headers: {
-						Authorization: webhookInfo.requestAuthorization,
-					},
-					json: true,
-				});
+				await this.helpers.httpRequestWithAuthentication.call(
+					this,
+					'ragicTriggerApi',
+					{
+						method: webhookInfo.requestMethod,
+						url,
+						headers: {
+							Authorization: webhookInfo.requestAuthorization,
+						},
+						json: true,
+					}
+				);
 				return true;
 			},
 			async delete(this: IHookFunctions): Promise<boolean> {
 				const webhookInfo = await getWebhookInfo(this, 'delete');
 				const url = webhookInfo.requestUrl;
-				await this.helpers.request({
-					method: webhookInfo.requestMethod,
-					url,
-					headers: {
-						Authorization: webhookInfo.requestAuthorization,
-					},
-					json: true,
-				});
+				await this.helpers.httpRequestWithAuthentication.call(
+					this,
+					'ragicTriggerApi',
+					{
+						method: webhookInfo.requestMethod,
+						url,
+						headers: {
+							Authorization: webhookInfo.requestAuthorization,
+						},
+						json: true,
+					}
+				);
 				return true;
 			},
 		},
