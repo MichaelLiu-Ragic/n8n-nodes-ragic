@@ -6,6 +6,7 @@ import {
 	type IWebhookResponseData,
 	type NodeConnectionType,
 	IHttpRequestMethods,
+	ApplicationError,
 } from 'n8n-workflow';
 
 export class RagicTrigger implements INodeType {
@@ -39,7 +40,7 @@ export class RagicTrigger implements INodeType {
 			{
 				displayName: 'Webhook Event',
 				name: 'webhookEvent',				// 若name使用"event"，這個選項就會被當成是這個node的分支，在搜尋此node時，顯示方式會變得比較不友善。
-				type: 'options',
+				type: 'multiOptions',
 				options: [
 					{
 						name: 'Create Records',
@@ -50,11 +51,11 @@ export class RagicTrigger implements INodeType {
 						value: 'update',
 					},
 					{
-						name: 'Create & Update Records',
-						value: 'CreateUpdate',
+						name: 'Delete Records',
+						value: 'delete',
 					},
 				],
-				default: 'create',
+				default: [],
 				description: 'The Event of this trigger node listen to',
 				required: true,
 			},
@@ -143,7 +144,7 @@ async function getWebhookInfo(iHookFuncions:IHookFunctions, webhookAction:'check
 	const apiKey = credentials?.apiKey as string;
 	const sheetUrl = credentials?.sheetUrl as string;
 	const sheetUrlInfo = getFormUrlInfo(sheetUrl);
-	const event = iHookFuncions.getNodeParameter('webhookEvent', 0) as string;
+	const event = composeEventString(iHookFuncions.getNodeParameter('webhookEvent', 0) as string[]);
 	let requestTarget = '/sims/';
 	switch(webhookAction){
 		case 'check':
@@ -160,7 +161,7 @@ async function getWebhookInfo(iHookFuncions:IHookFunctions, webhookAction:'check
 	url += `&ap=${sheetUrlInfo.apname}`;
 	url += `&path=${sheetUrlInfo.path}`;
 	url += `&si=${sheetUrlInfo.sheetIndex}`;
-	url += `&url=${webhookUrl}`;
+	url += `&url=${encodeURIComponent(webhookUrl)}`;
 	url += `&event=${event}`;
 
 	return {
@@ -185,4 +186,15 @@ function getFormUrlInfo(sheetUrl: string):{serverUrl:string, apname:string, path
 		path: path,
 		sheetIndex: sheetIndex
 	}
+}
+
+function composeEventString(events:string[]):string{
+	if(events.length === 0) throw  new ApplicationError('Webhook Event cannot be empty.');
+	
+	let eventString = '';
+	if(events.includes('create')) eventString += 'Create';
+	if(events.includes('update')) eventString += 'Update';
+	if(events.includes('delete')) eventString += 'Delete';
+
+	return eventString;
 }

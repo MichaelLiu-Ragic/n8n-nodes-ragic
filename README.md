@@ -15,6 +15,10 @@ The node currently supports the following functionalities:
 
 ## Version History
 
+- **v2.7.0**
+  - **Trigger Node**: Added support for listening to **Delete Records** events.
+  - **Action Node**: Added support for **Execute Action Button**.
+
 - **v2.6.0**
   - Internal improvements and compatibility updates.
 

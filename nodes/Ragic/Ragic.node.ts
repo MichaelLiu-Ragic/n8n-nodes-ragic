@@ -62,6 +62,10 @@ export class Ragic implements INodeType {
 					{
 						name: 'Retrieve File',
 						value: 'retrieveFile'
+					},
+					{
+						name: 'Execute Action Button',
+						value: 'executeActionButton'
 					}
 				],
 				default: 'readData',
@@ -124,7 +128,8 @@ export class Ragic implements INodeType {
 					show: {
 						action: [
 							'updateExistedData', 
-							'readSingleData'
+							'readSingleData',
+							'executeActionButton'
 						],
 					},
 				},
@@ -544,6 +549,28 @@ export class Ragic implements INodeType {
 					}
 				},
 			},
+			{		// action button
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+				displayName: 'Action Button',
+				name: 'actionButtonId',
+				type: 'options',
+				required: true,
+				typeOptions: {
+					loadOptionsMethod: 'getActionButtonOptions',
+					loadOptionsDependsOn: ['credentials', 'form'],
+				},
+				displayOptions: {
+					show: {
+						action: [
+							'executeActionButton'
+						],
+					}
+				},
+				default: '',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
+				description:
+					'Choose from the list, or specify an <a href="https://www.ragic.com/intl/en/doc-api/44">Action Button ID</a> using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+			},
 		],
 	};
 
@@ -609,7 +636,32 @@ export class Ragic implements INodeType {
 				}
 
 				return options;
-			}
+			},
+			async getActionButtonOptions(this: ILoadOptionsFunctions) {
+				const credentials = await this.getCredentials('ragicApi');
+				const serverUrl = credentials?.serverUrl as string;
+				const form = this.getNodeParameter('form', 0);
+				const apiKey = credentials?.apiKey as string;				
+				const responseJson = (await this.helpers.httpRequestWithAuthentication.call(
+					this,
+					'ragicApi',
+					{
+						method: 'GET',
+						url: `${serverUrl}/${form}/metadata/actionButton?api&category=massOperation&n8n`,
+						headers: {
+							Authorization: `Basic ${apiKey}`,
+						},
+						json: true,
+					}
+				)) as JsonObject;
+
+				const options = [];
+				const actionButtons = responseJson['actionButtons'] as {id:string, name:string}[];
+				for(const actionButtonInfo of actionButtons){
+					options.push({name: actionButtonInfo.name, value:actionButtonInfo.id})
+				}
+				return options;
+			},
 		},
 		
 	};
@@ -642,6 +694,9 @@ export class Ragic implements INodeType {
 			}
 		}else if(action === 'retrieveFile'){
 			iBinaryData = await sendRetrieveFileGETRequest(this, serverUrl, apiKey);
+		}else if(action === 'executeActionButton'){
+			const baseURL = buildRegularAPIUrl(this, action, serverUrl);
+			response = await sendExecuteActionButtonPOSTRequest(this, baseURL, apiKey);
 		}
 		
 
@@ -687,7 +742,7 @@ function buildRegularAPIUrl(iExecuteFunctions: IExecuteFunctions, action:string,
 	const path = iExecuteFunctions.getNodeParameter('form', 0);
 	
 	let recordIndex = '';
-	if(action === 'updateExistedData' || action === 'readSingleData'){
+	if(action === 'updateExistedData' || action === 'readSingleData' || action === 'executeActionButton'){
 		recordIndex = '/' + (iExecuteFunctions.getNodeParameter('recordIndex', 0) as string);
 	}
 
@@ -879,6 +934,26 @@ async function sendRetrieveFileGETRequest(iExecuteFunctions: IExecuteFunctions, 
 	
 	return await iExecuteFunctions.helpers.prepareBinaryData(stream, fileName);
 
+}
+
+async function sendExecuteActionButtonPOSTRequest(iExecuteFunctions: IExecuteFunctions, baseURL: string, apiKey: string):Promise<JsonObject> {
+	const actionButtonId = iExecuteFunctions.getNodeParameter('actionButtonId', 0) as string;
+	baseURL += `&bId=${actionButtonId}`;
+	
+	const responseJson = (await iExecuteFunctions.helpers.httpRequestWithAuthentication.call(
+		iExecuteFunctions,
+		'ragicApi',
+		{
+			method: 'POST',
+			url: baseURL,
+			headers: {
+				Authorization: `Basic ${apiKey}`,
+			},
+			json: true,
+		}
+	)) as JsonObject;
+
+	return responseJson;
 }
 
 async function getFormDef(iLoadOptionsFunctions:ILoadOptionsFunctions):Promise<JsonObject>{
