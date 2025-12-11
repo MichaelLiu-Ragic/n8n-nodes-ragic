@@ -675,86 +675,87 @@ export class Ragic implements INodeType {
 
 		const serverUrl = credentials?.serverUrl as string;
 		const apiKey = credentials?.apiKey as string;
-		const action = this.getNodeParameter('action', 0);
 
-		// 執行 API 請求
-		let response;
-		let iBinaryData:IBinaryData|null = null;
-		if(action === 'readData' || action === 'readSingleData'){
-			const baseURL = buildRegularAPIUrl(this, action, serverUrl);
-			response = await sendReadDataGETRequest(this, baseURL, apiKey);
-		}else if(action === 'createNewData' || action === 'updateExistedData'){
-			const method = this.getNodeParameter('method', 0);
-			let baseURL = buildRegularAPIUrl(this, action, serverUrl);
-			baseURL = addParametersToPOSTRequest(baseURL, action, this);
-			if(method === 'jsonMode'){
-				response = await sendJsonModePOSTRequest(this, baseURL, apiKey);
-			} else if(method === 'fieldMode'){
-				response = await sendFieldModePOSTRequest(this, baseURL, apiKey);
+		const items = this.getInputData();
+		const returnData: INodeExecutionData[] = [];
+
+		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+			try{
+				const action = this.getNodeParameter('action', itemIndex);
+
+				// 執行 API 請求
+				let response;
+				let iBinaryData:IBinaryData|null = null;
+				if(action === 'readData' || action === 'readSingleData'){
+					const baseURL = buildRegularAPIUrl(this, action, serverUrl, itemIndex);
+					response = await sendReadDataGETRequest(this, baseURL, apiKey, itemIndex);
+				}else if(action === 'createNewData' || action === 'updateExistedData'){
+					const method = this.getNodeParameter('method', itemIndex);
+					let baseURL = buildRegularAPIUrl(this, action, serverUrl, itemIndex);
+					baseURL = addParametersToPOSTRequest(baseURL, action, this, itemIndex);
+					if(method === 'jsonMode'){
+						response = await sendJsonModePOSTRequest(this, baseURL, apiKey, itemIndex);
+					} else if(method === 'fieldMode'){
+						response = await sendFieldModePOSTRequest(this, baseURL, apiKey, itemIndex);
+					}
+				}else if(action === 'retrieveFile'){
+					iBinaryData = await sendRetrieveFileGETRequest(this, serverUrl, apiKey, itemIndex);
+				}else if(action === 'executeActionButton'){
+					const baseURL = buildRegularAPIUrl(this, action, serverUrl, itemIndex);
+					response = await sendExecuteActionButtonPOSTRequest(this, baseURL, apiKey, itemIndex);
+				}
+				
+				if(iBinaryData){
+					const item: INodeExecutionData = {
+						json: iBinaryData,
+						binary: {[(iBinaryData.fileName?iBinaryData.fileName:'downloadedFile')]:iBinaryData},
+						pairedItem: { item: itemIndex },
+					};
+					returnData.push(item);
+				}else{
+					const parsedResponse = typeof response === 'string' ? JSON.parse(response) : response;
+					if (Array.isArray(parsedResponse)) {
+						parsedResponse.forEach((data) => {
+							returnData.push({
+								json: data,
+								pairedItem: { item: itemIndex },
+							});
+						});
+					} else {
+						returnData.push({
+							json: parsedResponse,
+							pairedItem: { item: itemIndex },
+						});
+					}
+				}
+			}catch(error){
+				returnData.push({
+					json: { error: error.message, itemIndex },
+					pairedItem: { item: itemIndex },
+        });
 			}
-		}else if(action === 'retrieveFile'){
-			iBinaryData = await sendRetrieveFileGETRequest(this, serverUrl, apiKey);
-		}else if(action === 'executeActionButton'){
-			const baseURL = buildRegularAPIUrl(this, action, serverUrl);
-			response = await sendExecuteActionButtonPOSTRequest(this, baseURL, apiKey);
 		}
-		
-
-		// pairedItem 用來告訴 n8n workflow，這個輸出 item 是從哪個輸入 item 產生的
-		// 例如：pairedItem: { item: 0 } 表示「這筆輸出資料來自輸入陣列 index 0 的那筆資料」
-		// 目前 node 預期只會處理單筆輸入，寫死 { item: 0 } 沒問題
-		// 若之後可能處理多筆輸入，這裡需要修改
-		if(iBinaryData){
-			const item: INodeExecutionData = {
-				json: iBinaryData,
-				binary: {[(iBinaryData.fileName?iBinaryData.fileName:'downloadedFile')]:iBinaryData},
-				pairedItem: { item: 0 },
-			};
-			return this.prepareOutputData([item]);
-
-		}else{
-			try {
-				const parsedResponse = (
-					typeof response === 'string' ? JSON.parse(response) : response
-				) as IDataObject;
-
-				const outputItems: INodeExecutionData[] = Array.isArray(parsedResponse)
-            ? parsedResponse.map((data) => ({
-                  json: data,
-                  pairedItem: { item: 0 },
-              }))
-            : [
-                  {
-                      json: parsedResponse,
-                      pairedItem: { item: 0 },
-                  },
-              ];
-
-				return [outputItems];
-			} catch (error) {
-				throw new ApplicationError('Failed to parse API response as JSON.');
-			}
-		}
+		return this.prepareOutputData(returnData);
 	}
 }
 
-function buildRegularAPIUrl(iExecuteFunctions: IExecuteFunctions, action:string, serverUrl:string):string{
-	const path = iExecuteFunctions.getNodeParameter('form', 0);
+function buildRegularAPIUrl(iExecuteFunctions: IExecuteFunctions, action:string, serverUrl:string, itemIndex:number):string{
+	const path = iExecuteFunctions.getNodeParameter('form', itemIndex);
 	
 	let recordIndex = '';
 	if(action === 'updateExistedData' || action === 'readSingleData' || action === 'executeActionButton'){
-		recordIndex = '/' + (iExecuteFunctions.getNodeParameter('recordIndex', 0) as string);
+		recordIndex = '/' + (iExecuteFunctions.getNodeParameter('recordIndex', itemIndex) as string);
 	}
 
 	return `${serverUrl}/${path}${recordIndex}?api&n8n`;
 }
 
-async function sendReadDataGETRequest(iExecuteFunctions: IExecuteFunctions, baseURL: string, apiKey: string):Promise<JsonObject> {
-	const action = iExecuteFunctions.getNodeParameter('action', 0);
-	const ifShowSubtables = iExecuteFunctions.getNodeParameter('ifShowSubtables', 0) as boolean;
-	const ifIgnoreMasked = iExecuteFunctions.getNodeParameter('ifIgnoreMasked', 0) as boolean;
+async function sendReadDataGETRequest(iExecuteFunctions: IExecuteFunctions, baseURL: string, apiKey: string, itemIndex:number):Promise<JsonObject> {
+	const action = iExecuteFunctions.getNodeParameter('action', itemIndex);
+	const ifShowSubtables = iExecuteFunctions.getNodeParameter('ifShowSubtables', itemIndex) as boolean;
+	const ifIgnoreMasked = iExecuteFunctions.getNodeParameter('ifIgnoreMasked', itemIndex) as boolean;
 	if(action !== 'readSingleData'){
-		const filters = iExecuteFunctions.getNodeParameter('filters', 0) as IDataObject;
+		const filters = iExecuteFunctions.getNodeParameter('filters', itemIndex) as IDataObject;
 		const filter_map = filters['filter_map'] as Array<{filters_field:string, filters_operand:string, filters_value:string}>;
 		if(filter_map){
 			for(const filter of filter_map){
@@ -765,7 +766,7 @@ async function sendReadDataGETRequest(iExecuteFunctions: IExecuteFunctions, base
 			}
 		}
 	}
-	const otherParameters = iExecuteFunctions.getNodeParameter('otherParameters', 0) as IDataObject;
+	const otherParameters = iExecuteFunctions.getNodeParameter('otherParameters', itemIndex) as IDataObject;
 	const otherParameter_map = otherParameters['parameter_map'] as Array<{parameters_key:string, parameters_value:string}>;
 	if(otherParameter_map){
 		for(const otherParameter of otherParameter_map){
@@ -777,7 +778,7 @@ async function sendReadDataGETRequest(iExecuteFunctions: IExecuteFunctions, base
 	if(action === 'readSingleData'){
 		baseURL += '&singleEntryMode';
 	}else{
-		const limit = iExecuteFunctions.getNodeParameter('limit', 0) + '' as string;
+		const limit = iExecuteFunctions.getNodeParameter('limit', itemIndex) + '' as string;
 		baseURL += ('&limit=' + limit);
 	}
 	if(!ifShowSubtables){
@@ -803,8 +804,8 @@ async function sendReadDataGETRequest(iExecuteFunctions: IExecuteFunctions, base
 	return responseJson;
 }
 
-async function sendJsonModePOSTRequest(iExecuteFunctions: IExecuteFunctions, baseURL: string, apiKey: string):Promise<JsonObject> {
-	const jsonBody = JSON.parse(iExecuteFunctions.getNodeParameter('jsonBody', 0) as string);
+async function sendJsonModePOSTRequest(iExecuteFunctions: IExecuteFunctions, baseURL: string, apiKey: string, itemIndex:number):Promise<JsonObject> {
+	const jsonBody = JSON.parse(iExecuteFunctions.getNodeParameter('jsonBody', itemIndex) as string);
 	
 	const responseJson = (await iExecuteFunctions.helpers.httpRequestWithAuthentication.call(
 		iExecuteFunctions,
@@ -823,11 +824,11 @@ async function sendJsonModePOSTRequest(iExecuteFunctions: IExecuteFunctions, bas
 	return responseJson;
 }
 
-async function sendFieldModePOSTRequest(iExecuteFunctions: IExecuteFunctions, baseURL: string, apiKey: string):Promise<JsonObject> {
+async function sendFieldModePOSTRequest(iExecuteFunctions: IExecuteFunctions, baseURL: string, apiKey: string, itemIndex:number):Promise<JsonObject> {
 	const formData = new FormData();
 
 	// 一般欄位 -------------------------------------------------------------
-	const entries = iExecuteFunctions.getNodeParameter('entries', 0) as IDataObject;
+	const entries = iExecuteFunctions.getNodeParameter('entries', itemIndex) as IDataObject;
 	const fieldMode_map = entries['fieldMode_map'] as Array<{
 		entries_field: string;
 		entries_value?: string;
@@ -836,17 +837,17 @@ async function sendFieldModePOSTRequest(iExecuteFunctions: IExecuteFunctions, ba
 	if(fieldMode_map){
 		for (const entry of fieldMode_map) {
 			if (entry.entries_type === 'file' && entry.entries_value) {		// 檔案欄位
-				addFormData(entry.entries_field, entry.entries_value, 'file', formData, iExecuteFunctions);
+				addFormData(entry.entries_field, entry.entries_value, 'file', formData, iExecuteFunctions, itemIndex);
 			}
 			else if (entry.entries_value !== undefined) {		// 純文字欄位
-				addFormData(entry.entries_field, entry.entries_value, 'text', formData, iExecuteFunctions);
+				addFormData(entry.entries_field, entry.entries_value, 'text', formData, iExecuteFunctions, itemIndex);
 			}
 		}
 	}
 	// -------------------------------------------------------------------
 	
 	// 子表格欄位 ---------------------------------------------------------
-	const subtablentries = iExecuteFunctions.getNodeParameter('subtableEntries', 0) as IDataObject;
+	const subtablentries = iExecuteFunctions.getNodeParameter('subtableEntries', itemIndex) as IDataObject;
 	const fieldMode_subtable_map = subtablentries['fieldMode_subtable_map'] as Array<{
 		subtable_entries_nodeId: number;
 		subtable_entries_field: string;
@@ -861,9 +862,9 @@ async function sendFieldModePOSTRequest(iExecuteFunctions: IExecuteFunctions, ba
 			const formDataKey = domainId + '_' + subtableEntry.subtable_entries_nodeId;
 
 			if(subtableEntry.subtable_entries_type === 'file' && subtableEntry.subtable_entries_value){
-				addFormData(formDataKey, subtableEntry.subtable_entries_value, 'file', formData, iExecuteFunctions);
+				addFormData(formDataKey, subtableEntry.subtable_entries_value, 'file', formData, iExecuteFunctions, itemIndex);
 			}else if(subtableEntry.subtable_entries_value !== undefined){
-				addFormData(formDataKey, subtableEntry.subtable_entries_value, 'text', formData, iExecuteFunctions);
+				addFormData(formDataKey, subtableEntry.subtable_entries_value, 'text', formData, iExecuteFunctions, itemIndex);
 			}
 		}
 	}
@@ -886,13 +887,13 @@ async function sendFieldModePOSTRequest(iExecuteFunctions: IExecuteFunctions, ba
 	return responseJson;
 }
 
-async function sendRetrieveFileGETRequest(iExecuteFunctions: IExecuteFunctions, serverUrl:string, apiKey: string):Promise<IBinaryData> {
-	const fileDownloadWithUserAuthentication = iExecuteFunctions.getNodeParameter('fileDownloadWithUserAuthentication', 0) as boolean;
+async function sendRetrieveFileGETRequest(iExecuteFunctions: IExecuteFunctions, serverUrl:string, apiKey: string, itemIndex:number):Promise<IBinaryData> {
+	const fileDownloadWithUserAuthentication = iExecuteFunctions.getNodeParameter('fileDownloadWithUserAuthentication', itemIndex) as boolean;
 	let apName:string;
 	let cookies = [] as string[];
 	
 	if(fileDownloadWithUserAuthentication){
-		const fileRecordUrl = iExecuteFunctions.getNodeParameter('fileRecordUrl', 0) as string;
+		const fileRecordUrl = iExecuteFunctions.getNodeParameter('fileRecordUrl', itemIndex) as string;
 		const accessRecordUrl = fileRecordUrl.split('?')[0] + '?api&n8n'
 		const accessRecordResponse = await iExecuteFunctions.helpers.httpRequestWithAuthentication.call(
 			iExecuteFunctions,
@@ -910,11 +911,11 @@ async function sendRetrieveFileGETRequest(iExecuteFunctions: IExecuteFunctions, 
 		cookies = accessRecordResponse.headers['set-cookie'];
 		apName = fileRecordUrl.split('/')[3];
 	}else{
-		apName = iExecuteFunctions.getNodeParameter('apName', 0) as string;
+		apName = iExecuteFunctions.getNodeParameter('apName', itemIndex) as string;
 	}
 
 	const cookie = cookies.join(';');
-	const fullFileName = iExecuteFunctions.getNodeParameter('fileName', 0) as string;
+	const fullFileName = iExecuteFunctions.getNodeParameter('fileName', itemIndex) as string;
 	const retrieveFileUrl = `${serverUrl}/sims/file.jsp?a=${apName}&f=${fullFileName}`;
 	const fileName = fullFileName.split('@')[1];
 	const stream = await iExecuteFunctions.helpers.httpRequestWithAuthentication.call(
@@ -936,8 +937,8 @@ async function sendRetrieveFileGETRequest(iExecuteFunctions: IExecuteFunctions, 
 
 }
 
-async function sendExecuteActionButtonPOSTRequest(iExecuteFunctions: IExecuteFunctions, baseURL: string, apiKey: string):Promise<JsonObject> {
-	const actionButtonId = iExecuteFunctions.getNodeParameter('actionButtonId', 0) as string;
+async function sendExecuteActionButtonPOSTRequest(iExecuteFunctions: IExecuteFunctions, baseURL: string, apiKey: string, itemIndex:number):Promise<JsonObject> {
+	const actionButtonId = iExecuteFunctions.getNodeParameter('actionButtonId', itemIndex) as string;
 	baseURL += `&bId=${actionButtonId}`;
 	
 	const responseJson = (await iExecuteFunctions.helpers.httpRequestWithAuthentication.call(
@@ -980,15 +981,15 @@ async function getFormDef(iLoadOptionsFunctions:ILoadOptionsFunctions):Promise<J
 	return responseJson;
 }
 
-async function addFormData(key:string, value:string, type:string, formData:FormData, iExecuteFunctions: IExecuteFunctions):Promise<FormData>{
+async function addFormData(key:string, value:string, type:string, formData:FormData, iExecuteFunctions: IExecuteFunctions, itemIndex:number):Promise<FormData>{
 	if(type === 'file'){
 		// 用 assertBinaryData() 安全取得 IBinaryData 的 metadata（檔名、MIME 類型），
 		// 會檢查該 binary property 是否存在，若不存在會丟出明確錯誤
-		const binaryData = iExecuteFunctions.helpers.assertBinaryData(0, value);
+		const binaryData = iExecuteFunctions.helpers.assertBinaryData(itemIndex, value);
 
 		// 直接從輸入資料中抓 IBinaryData 實體（可能包含 id 或 base64 data），
 		// 不經檢查，因為需要直接取用 .id 或 .data 來決定是用 Buffer 還是 Stream
-		const itemBinaryData = iExecuteFunctions.getInputData(0)[0].binary![value];
+		const itemBinaryData = iExecuteFunctions.getInputData(itemIndex)[0].binary![value];
 		let uploadData: Buffer | NodeJS.ReadableStream;
 
 		if (itemBinaryData.id) {
@@ -1010,12 +1011,12 @@ async function addFormData(key:string, value:string, type:string, formData:FormD
 	return formData;
 }
 
-function addParametersToPOSTRequest(url:string, action:string, iExecuteFunctions:IExecuteFunctions):string{
+function addParametersToPOSTRequest(url:string, action:string, iExecuteFunctions:IExecuteFunctions, itemIndex:number):string{
 	if(action !== 'createNewData' && action !== 'updateExistedData') return url;
-	const ifDoFormula = iExecuteFunctions.getNodeParameter('ifDoFormula', 0) as boolean;
+	const ifDoFormula = iExecuteFunctions.getNodeParameter('ifDoFormula', itemIndex) as boolean;
 	if(ifDoFormula){
 		url += '&doFormula=true';
-		const ifRunLinkAndLoadBeforeFormula = iExecuteFunctions.getNodeParameter('ifRunLinkAndLoadBeforeFormula', 0) as boolean;
+		const ifRunLinkAndLoadBeforeFormula = iExecuteFunctions.getNodeParameter('ifRunLinkAndLoadBeforeFormula', itemIndex) as boolean;
 		url += ('&doLinkLoad=' + (ifRunLinkAndLoadBeforeFormula?'first':'true'));
 	}else{
 		url += '&doLinkLoad=first';

@@ -11,9 +11,13 @@ The node currently supports the following functionalities:
 - **Read**: Retrieve records from your Ragic database.
 - **Update**: Update existing records in your Ragic database.
 - **Create**: Create new records with custom logic in your Ragic database.
-- **Retrieve File**: Fetch files from your Ragic database.
+- **Retrieve File**: Retrieve files from your Ragic database.
+- **Execute Action Button**: Execute an action button on a specific record.
 
 ## Version History
+
+- **v2.8.0**
+  - **Action Node**: Added support for **multi-item execution**, with proper parameter retrieval and output mapping for each input item.
 
 - **v2.7.0**
   - **Trigger Node**: Added support for listening to **Delete Records** events.
