@@ -16,6 +16,9 @@ The node currently supports the following functionalities:
 
 ## Version History
 
+- **v2.8.2**
+  - **Compatibility Fix**: Fixed compatibility with n8n Cloud.
+
 - **v2.8.1**
   - **Bug Fix**: Fixed an intermittent file upload failure in Field Mode.
 

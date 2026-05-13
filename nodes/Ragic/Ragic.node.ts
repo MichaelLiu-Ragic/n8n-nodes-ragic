@@ -11,7 +11,6 @@ import type {
 	NodeExecutionWithMetadata,
 } from 'n8n-workflow';
 import { ApplicationError } from 'n8n-workflow';
-import FormData from 'form-data';
 
 export class Ragic implements INodeType {
 	description: INodeTypeDescription = {
@@ -986,10 +985,8 @@ async function addFormData(key:string, value:string, type:string, formData:FormD
 		const binaryData = iExecuteFunctions.helpers.assertBinaryData(itemIndex, value);
 		const uploadData = await iExecuteFunctions.helpers.getBinaryDataBuffer(itemIndex, value);
 
-		formData.append(key, uploadData, {
-			filename: binaryData.fileName || 'upload.bin',
-			contentType: binaryData.mimeType || 'application/octet-stream',
-		});
+		const blob = new Blob([uploadData], { type: binaryData.mimeType || 'application/octet-stream' });
+		formData.append(key, blob, binaryData.fileName || 'upload.bin');
 	}else if(type === 'text'){
 		formData.append(key, value);
 	}
