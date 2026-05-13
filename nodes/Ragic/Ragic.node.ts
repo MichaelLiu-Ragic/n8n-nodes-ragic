@@ -10,7 +10,7 @@ import type {
 	NodeConnectionType,
 	NodeExecutionWithMetadata,
 } from 'n8n-workflow';
-import { ApplicationError, BINARY_ENCODING } from 'n8n-workflow';
+import { ApplicationError } from 'n8n-workflow';
 import FormData from 'form-data';
 
 export class Ragic implements INodeType {
@@ -837,10 +837,10 @@ async function sendFieldModePOSTRequest(iExecuteFunctions: IExecuteFunctions, ba
 	if(fieldMode_map){
 		for (const entry of fieldMode_map) {
 			if (entry.entries_type === 'file' && entry.entries_value) {		// 檔案欄位
-				addFormData(entry.entries_field, entry.entries_value, 'file', formData, iExecuteFunctions, itemIndex);
+				await addFormData(entry.entries_field, entry.entries_value, 'file', formData, iExecuteFunctions, itemIndex);
 			}
 			else if (entry.entries_value !== undefined) {		// 純文字欄位
-				addFormData(entry.entries_field, entry.entries_value, 'text', formData, iExecuteFunctions, itemIndex);
+				await addFormData(entry.entries_field, entry.entries_value, 'text', formData, iExecuteFunctions, itemIndex);
 			}
 		}
 	}
@@ -862,9 +862,9 @@ async function sendFieldModePOSTRequest(iExecuteFunctions: IExecuteFunctions, ba
 			const formDataKey = domainId + '_' + subtableEntry.subtable_entries_nodeId;
 
 			if(subtableEntry.subtable_entries_type === 'file' && subtableEntry.subtable_entries_value){
-				addFormData(formDataKey, subtableEntry.subtable_entries_value, 'file', formData, iExecuteFunctions, itemIndex);
+				await addFormData(formDataKey, subtableEntry.subtable_entries_value, 'file', formData, iExecuteFunctions, itemIndex);
 			}else if(subtableEntry.subtable_entries_value !== undefined){
-				addFormData(formDataKey, subtableEntry.subtable_entries_value, 'text', formData, iExecuteFunctions, itemIndex);
+				await addFormData(formDataKey, subtableEntry.subtable_entries_value, 'text', formData, iExecuteFunctions, itemIndex);
 			}
 		}
 	}
@@ -983,28 +983,13 @@ async function getFormDef(iLoadOptionsFunctions:ILoadOptionsFunctions):Promise<J
 
 async function addFormData(key:string, value:string, type:string, formData:FormData, iExecuteFunctions: IExecuteFunctions, itemIndex:number):Promise<FormData>{
 	if(type === 'file'){
-		// 用 assertBinaryData() 安全取得 IBinaryData 的 metadata（檔名、MIME 類型），
-		// 會檢查該 binary property 是否存在，若不存在會丟出明確錯誤
 		const binaryData = iExecuteFunctions.helpers.assertBinaryData(itemIndex, value);
-
-		// 直接從輸入資料中抓 IBinaryData 實體（可能包含 id 或 base64 data），
-		// 不經檢查，因為需要直接取用 .id 或 .data 來決定是用 Buffer 還是 Stream
-		const itemBinaryData = iExecuteFunctions.getInputData(itemIndex)[0].binary![value];
-		let uploadData: Buffer | NodeJS.ReadableStream;
-
-		if (itemBinaryData.id) {
-			// 大檔案用 stream
-			uploadData = await iExecuteFunctions.helpers.getBinaryStream(itemBinaryData.id);
-		} else {
-			// 小檔案用 Buffer
-			uploadData = Buffer.from(itemBinaryData.data, BINARY_ENCODING);
-		}
+		const uploadData = await iExecuteFunctions.helpers.getBinaryDataBuffer(itemIndex, value);
 
 		formData.append(key, uploadData, {
-				filename: binaryData.fileName || 'upload.bin',
-				contentType: binaryData.mimeType || 'application/octet-stream',		// 如果沒有提供，application/octet-stream 代表「未知的二進位檔案」，是最安全的通用型別。
-			});
-
+			filename: binaryData.fileName || 'upload.bin',
+			contentType: binaryData.mimeType || 'application/octet-stream',
+		});
 	}else if(type === 'text'){
 		formData.append(key, value);
 	}

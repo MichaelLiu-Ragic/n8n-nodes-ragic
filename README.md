@@ -16,6 +16,9 @@ The node currently supports the following functionalities:
 
 ## Version History
 
+- **v2.8.1**
+  - **Bug Fix**: Fixed an intermittent file upload failure in Field Mode.
+
 - **v2.8.0**
   - **Action Node**: Added support for **multi-item execution**, with proper parameter retrieval and output mapping for each input item.
 
