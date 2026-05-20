@@ -16,6 +16,9 @@ The node currently supports the following functionalities:
 
 ## Version History
 
+- **v2.8.3**
+  - No functional changes. Adds npm provenance support for n8n Creator Portal verification.
+
 - **v2.8.2**
   - **Compatibility Fix**: Fixed compatibility with n8n Cloud.
 
