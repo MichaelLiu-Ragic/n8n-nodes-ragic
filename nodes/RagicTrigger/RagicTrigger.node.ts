@@ -1,4 +1,5 @@
 import {
+	type IDataObject,
 	type INodeType,
 	type INodeTypeDescription,
 	type IHookFunctions,
@@ -66,6 +67,19 @@ export class RagicTrigger implements INodeType {
 		// 獲取請求數據
 		const bodyData = this.getBodyData();
 
+		// v1以後，Ragic 送出的是變更記錄陣列，逐筆展開成 item。保留 bodyData 外層包裝，
+		// 讓既有工作流的 $json.bodyData.xxx 參照維持不變，差別只在 item 從一筆變多筆。
+		if (Array.isArray(bodyData)) {
+			return {
+				workflowData: [
+					this.helpers.returnJsonArray(
+						(bodyData as unknown as IDataObject[]).map((entry) => ({ bodyData: entry })),
+					),
+				],
+			};
+		}
+
+		// 更新前的 Ragic（v1）送單一物件，維持相容。
 		return {
 			workflowData: [
 				this.helpers.returnJsonArray({
@@ -163,6 +177,7 @@ async function getWebhookInfo(iHookFuncions:IHookFunctions, webhookAction:'check
 	url += `&si=${sheetUrlInfo.sheetIndex}`;
 	url += `&url=${encodeURIComponent(webhookUrl)}`;
 	url += `&event=${event}`;
+	url += `&version=v2`;
 
 	return {
 		requestMethod: 'GET',
