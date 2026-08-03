@@ -523,7 +523,8 @@ export class Ragic implements INodeType {
 				type: 'string',
 				required: true,
 				default: '',
-				description: 'Please enter the record URL where you upload the file; nevigate to the record and copy the URL, then paste it here',
+				placeholder: 'https://{server}/{accountName}{path}/{sheetIndex}/{recordId}',
+				description: 'Enter the record URL where the file was uploaded. The URL must have the format https://{server}/{accountName}{path}/{sheetIndex}/{recordId}.',
 				displayOptions: {
 					show: {
 						action: ['retrieveFile'],
@@ -886,46 +887,75 @@ async function sendFieldModePOSTRequest(iExecuteFunctions: IExecuteFunctions, ba
 	return responseJson;
 }
 
+function parseFileRecordUrl(fileRecordUrl: string): { apName: string; path: string; sheetIndex: string; recordId: string } {
+	const invalidUrlError = new ApplicationError(
+		'File Record Url must be a record URL in the format https://{server}/{accountName}{path}/{sheetIndex}/{recordId}',
+	);
+
+	try {
+		const recordUrl = new URL(fileRecordUrl);
+		if (
+			(recordUrl.protocol !== 'http:' && recordUrl.protocol !== 'https:') ||
+			recordUrl.pathname.endsWith('/')
+		) {
+			throw invalidUrlError;
+		}
+
+		const pathSegments = recordUrl.pathname.split('/').filter(Boolean);
+		if (pathSegments.length < 4) {
+			throw invalidUrlError;
+		}
+
+		const recordId = pathSegments.pop() as string;
+		const sheetIndex = pathSegments.pop() as string;
+		const apName = pathSegments.shift() as string;
+		if (!/^\d+$/.test(sheetIndex) || !/^\d+$/.test(recordId)) {
+			throw invalidUrlError;
+		}
+
+		return {
+			apName: decodeURIComponent(apName),
+			path: '/' + pathSegments.map((segment) => decodeURIComponent(segment)).join('/'),
+			sheetIndex,
+			recordId,
+		};
+	} catch {
+		throw invalidUrlError;
+	}
+}
+
 async function sendRetrieveFileGETRequest(iExecuteFunctions: IExecuteFunctions, serverUrl:string, apiKey: string, itemIndex:number):Promise<IBinaryData> {
 	const fileDownloadWithUserAuthentication = iExecuteFunctions.getNodeParameter('fileDownloadWithUserAuthentication', itemIndex) as boolean;
 	let apName:string;
-	let cookies = [] as string[];
+	let fileRecordParameters: { path: string; sheetIndex: string; recordId: string } | undefined;
 	
 	if(fileDownloadWithUserAuthentication){
 		const fileRecordUrl = iExecuteFunctions.getNodeParameter('fileRecordUrl', itemIndex) as string;
-		const accessRecordUrl = fileRecordUrl.split('?')[0] + '?api&n8n'
-		const accessRecordResponse = await iExecuteFunctions.helpers.httpRequestWithAuthentication.call(
-			iExecuteFunctions,
-			'ragicApi',
-			{
-				method: 'GET',
-				url: accessRecordUrl,
-				headers: {
-					Authorization: `Basic ${apiKey}`,
-				},
-				returnFullResponse: true,
-				json: true,
-			}
-		);
-		cookies = accessRecordResponse.headers['set-cookie'];
-		apName = fileRecordUrl.split('/')[3];
+		const parsedFileRecordUrl = parseFileRecordUrl(fileRecordUrl);
+		apName = parsedFileRecordUrl.apName;
+		fileRecordParameters = parsedFileRecordUrl;
 	}else{
 		apName = iExecuteFunctions.getNodeParameter('apName', itemIndex) as string;
 	}
 
-	const cookie = cookies.join(';');
 	const fullFileName = iExecuteFunctions.getNodeParameter('fileName', itemIndex) as string;
-	const retrieveFileUrl = `${serverUrl}/sims/file.jsp?a=${apName}&f=${fullFileName}`;
+	const retrieveFileUrl = new URL('/sims/file.jsp', serverUrl);
+	retrieveFileUrl.searchParams.set('a', apName);
+	retrieveFileUrl.searchParams.set('f', fullFileName);
+	if (fileRecordParameters) {
+		retrieveFileUrl.searchParams.set('p', fileRecordParameters.path);
+		retrieveFileUrl.searchParams.set('si', fileRecordParameters.sheetIndex);
+		retrieveFileUrl.searchParams.set('nid', fileRecordParameters.recordId);
+	}
 	const fileName = fullFileName.split('@')[1];
 	const stream = await iExecuteFunctions.helpers.httpRequestWithAuthentication.call(
 		iExecuteFunctions,
 		'ragicApi',
 		{
 			method: 'GET',
-			url: retrieveFileUrl,
+			url: retrieveFileUrl.toString(),
 			headers: {
 				Authorization: `Basic ${apiKey}`,
-				Cookie: cookie
 			},
 			encoding: 'stream',
 			json: false,

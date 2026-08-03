@@ -16,6 +16,9 @@ The node currently supports the following functionalities:
 
 ## Version History
 
+- **v2.9.1**
+  - **Retrieve File Optimization**: Improved authenticated file retrieval efficiency and input validation.
+
 - **v2.9.0**
   - **Trigger Node**: The webhook now emits **every changed record** as a separate item, and adds a **`changedFields`** attribute listing the IDs of the fields that changed — on the record for top-level fields, and on each affected subtable row for subtable fields. Previously, a mass operation (such as a mass update) only triggered the workflow with the first record.
     *(Note: Existing workflows need to be re-activated (deactivate, then activate) once after upgrading for these changes to take effect.)*
